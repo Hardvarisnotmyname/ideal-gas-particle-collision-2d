@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ideal Gas Simulation (Fast, 10k particles)</title>
+  <style>
+    body { background: black; color: white; font-family: sans-serif; text-align: center; }
+    canvas { background: black; display: block; margin: 0 auto; }
+    .controls { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Ideal Gas Simulation</h1>
+  <canvas id="simCanvas" width="800" height="400"></canvas>
+  <div id="tempDisplay">Left Temp: 0 | Right Temp: 0</div>
+  <div class="controls">
+    <label>Particles/Box: <input id="nRange" type="range" min="10" max="10000" value="200"><span id="nLabel">200</span></label>
+    <label>Temp Left: <input id="tLRange" type="range" min="1" max="1000" value="50"><span id="tLLabel">50</span></label>
+    <label>Temp Right: <input id="tRRange" type="range" min="1" max="1000" value="20"><span id="tRLabel">20</span></label>
+    <label>Radius: <input id="rRange" type="range" min="1" max="10" value="3"><span id="rLabel">3</span></label>
+    <button id="resetBtn">Reset</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="openWallBtn">Open Pipe</button>
+  </div>
+  <script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const tempDisplay = document.getElementById('tempDisplay');
+
+    const nRange = document.getElementById('nRange');
+    const tLRange = document.getElementById('tLRange');
+    const tRRange = document.getElementById('tRRange');
+    const rRange = document.getElementById('rRange');
+    const nLabel = document.getElementById('nLabel');
+    const tLLabel = document.getElementById('tLLabel');
+    const tRLabel = document.getElementById('tRLabel');
+    const rLabel = document.getElementById('rLabel');
+
+    const resetBtn = document.getElementById('resetBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const openWallBtn = document.getElementById('openWallBtn');
+
+    let particles = [];
+    let paused = false;
+    let wallOpen = false;
+    let pipeHeight = 80;
+    let leftBox = {x: 0, y: 0, w: canvas.width/2, h: canvas.height};
+    let rightBox = {x: canvas.width/2, y: 0, w: canvas.width/2, h: canvas.height};
+    const TEMP_SPEED_FACTOR = 0.03;
+
+    class Particle {
+      constructor(x, y, vx, vy, r, m=1) {
+        this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.r = r; this.m = m;
+      }
+      update() {
+        // Sub-stepping to avoid tunneling
+        let maxStep = this.r; // max move per substep ~ radius
+        let steps = Math.ceil(Math.max(Math.abs(this.vx), Math.abs(this.vy)) / maxStep);
+        let dt = 1 / steps;
+        for (let s = 0; s < steps; s++) {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+
+          if (this.x - this.r < 0) { this.x = this.r; this.vx *= -1; }
+          if (this.x + this.r > canvas.width) { this.x = canvas.width - this.r; this.vx *= -1; }
+          if (this.y - this.r < 0) { this.y = this.r; this.vy *= -1; }
+          if (this.y + this.r > canvas.height) { this.y = canvas.height - this.r; this.vy *= -1; }
+
+          // Wall collision
+          if (this.x + this.r > leftBox.w && this.x - this.r < leftBox.w) {
+            const withinPipe = (this.y > (canvas.height - pipeHeight)/2 && this.y < (canvas.height + pipeHeight)/2);
+            if (!wallOpen || !withinPipe) {
+              if (this.x < leftBox.w) { this.x = leftBox.w - this.r; this.vx *= -1; }
+              else { this.x = leftBox.w + this.r; this.vx *= -1; }
+            }
+          }
+        }
+      }
+      draw() {
+        let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+        let hue = 240 - Math.min(speed * 600, 240);
+        ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    function tempToRMS(T) {
+      return Math.sqrt(Math.max(0, T)) * TEMP_SPEED_FACTOR;
+    }
+
+    function createParticles() {
+      particles = [];
+      let n = parseInt(nRange.value);
+      let r = parseInt(rRange.value);
+      for (let i=0; i<n; i++) {
+        let speed = tempToRMS(parseFloat(tLRange.value));
+        let angle = Math.random() * 2 * Math.PI;
+        let x = Math.random() * (leftBox.w - 2*r) + r;
+        let y = Math.random() * (leftBox.h - 2*r) + r;
+        particles.push(new Particle(x, y, speed * Math.cos(angle), speed * Math.sin(angle), r));
+      }
+      for (let i=0; i<n; i++) {
+        let speed = tempToRMS(parseFloat(tRRange.value));
+        let angle = Math.random() * 2 * Math.PI;
+        let x = Math.random() * (rightBox.w - 2*r) + rightBox.x + r;
+        let y = Math.random() * (rightBox.h - 2*r) + r;
+        particles.push(new Particle(x, y, speed * Math.cos(angle), speed * Math.sin(angle), r));
+      }
+    }
+
+    function currentRMSforBox(boxIndex) {
+      let sumSq = 0, count = 0;
+      for (let p of particles) {
+        const inLeft = p.x < leftBox.w;
+        if ((boxIndex === 0 && inLeft) || (boxIndex === 1 && !inLeft)) {
+          sumSq += p.vx*p.vx + p.vy*p.vy;
+          count++;
+        }
+      }
+      if (!count) return 0;
+      return Math.sqrt(sumSq / (2*count));
+    }
+
+    function setBoxTemperature(boxIndex, targetT) {
+      const targetRMS = tempToRMS(targetT);
+      const currentRMS = currentRMSforBox(boxIndex);
+      if (currentRMS <= 1e-6) return;
+      const scale = targetRMS / currentRMS;
+      for (let p of particles) {
+        const inLeft = p.x < leftBox.w;
+        if ((boxIndex === 0 && inLeft) || (boxIndex === 1 && !inLeft)) {
+          p.vx *= scale;
+          p.vy *= scale;
+        }
+      }
+    }
+
+    function handleCollisionsGrid() {
+      const cellSize = parseInt(rRange.value) * 2;
+      const grid = {};
+      const key = (cx, cy) => `${cx},${cy}`;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const cx = Math.floor(p.x / cellSize);
+        const cy = Math.floor(p.y / cellSize);
+        const k = key(cx, cy);
+        if (!grid[k]) grid[k] = [];
+        grid[k].push(p);
+      }
+
+      for (const k in grid) {
+        const [cx, cy] = k.split(',').map(Number);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const nk = key(cx + dx, cy + dy);
+            if (!grid[nk]) continue;
+            for (let p1 of grid[k]) {
+              for (let p2 of grid[nk]) {
+                if (p1 === p2) continue;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 0 && dist < p1.r + p2.r) {
+                  const nx = dx / dist, ny = dy / dist;
+                  const kx = (p1.vx - p2.vx);
+                  const ky = (p1.vy - p2.vy);
+                  const p = 2 * (nx * kx + ny * ky) / (p1.m + p2.m);
+                  p1.vx -= p * p2.m * nx;
+                  p1.vy -= p * p2.m * ny;
+                  p2.vx += p * p1.m * nx;
+                  p2.vy += p * p1.m * ny;
+                  const overlap = (p1.r + p2.r) - dist;
+                  p1.x -= nx * overlap / 2;
+                  p1.y -= ny * overlap / 2;
+                  p2.x += nx * overlap / 2;
+                  p2.y += ny * overlap / 2;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function getTemperature(boxIndex) {
+      let sumKE = 0, count = 0;
+      for (let p of particles) {
+        if ((boxIndex === 0 && p.x < leftBox.w) ||
+            (boxIndex === 1 && p.x > rightBox.x)) {
+          sumKE += 0.5 * p.m * (p.vx*p.vx + p.vy*p.vy);
+          count++;
+        }
+      }
+      return count ? (2 * sumKE) / count : 0;
+    }
+
+    function step() {
+      if (!paused) {
+        for (let p of particles) p.update();
+        handleCollisionsGrid();
+      }
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.strokeStyle = 'white';
+      ctx.beginPath();
+      ctx.moveTo(leftBox.w, 0);
+      ctx.lineTo(leftBox.w, (canvas.height - pipeHeight)/2);
+      ctx.moveTo(leftBox.w, (canvas.height + pipeHeight)/2);
+      ctx.lineTo(leftBox.w, canvas.height);
+      ctx.stroke();
+
+      for (let p of particles) p.draw();
+      tempDisplay.textContent = `Left Temp: ${getTemperature(0).toFixed(3)} | Right Temp: ${getTemperature(1).toFixed(3)}`;
+      requestAnimationFrame(step);
+    }
+
+    nRange.oninput = ()=>{ nLabel.textContent = nRange.value; };
+    rRange.oninput = ()=>{ rLabel.textContent = rRange.value; };
+
+    tLRange.oninput = ()=>{
+      tLLabel.textContent = tLRange.value;
+      setBoxTemperature(0, Number(tLRange.value));
+    };
+    tRRange.oninput = ()=>{
+      tRLabel.textContent = tRRange.value;
+      setBoxTemperature(1, Number(tRRange.value));
+    };
+
+    resetBtn.onclick = ()=>{ createParticles(); };
+    pauseBtn.onclick = ()=>{ paused = !paused; pauseBtn.textContent = paused ? 'Resume' : 'Pause'; };
+    openWallBtn.onclick = ()=>{ wallOpen = !wallOpen; openWallBtn.textContent = wallOpen ? 'Close Pipe' : 'Open Pipe'; };
+
+    createParticles();
+    step();
+  </script>
+</body>
+</html>

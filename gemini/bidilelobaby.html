@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ideal Gas Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-y: auto;
+        }
+        canvas {
+            background-color: black;
+            display: block;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .control-panel {
+            background-color: #1f2937; /* gray-800 */
+        }
+        .temp-display {
+            background-color: #374151; /* gray-700 */
+        }
+        #graphContainer {
+             background-color: #111827; /* gray-900 */
+             border: 1px solid #374151; /* gray-700 */
+             border-radius: 0.5rem;
+             padding: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center h-full p-4">
+
+    <div class="w-full max-w-6xl mx-auto">
+        <!-- Header and Controls -->
+        <div class="control-panel p-4 rounded-t-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl sm:text-2xl font-bold">Ideal Gas Simulation</h1>
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                 <div class="flex flex-col items-center">
+                    <label for="particleCount" class="text-sm font-medium text-gray-300 mb-1">Particles</label>
+                    <input type="range" id="particleCount" min="100" max="10000" value="400" step="10" class="w-24 sm:w-32">
+                    <span id="particleCountValue" class="text-xs text-gray-400">400</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <label for="tempLeftInput" class="text-sm font-medium text-gray-300 mb-1">Hot Temp (K)</label>
+                    <input type="number" id="tempLeftInput" value="500" class="w-20 bg-gray-700 text-white p-1 rounded text-center">
+                </div>
+                 <div class="flex flex-col items-center">
+                    <label for="tempRightInput" class="text-sm font-medium text-gray-300 mb-1">Cold Temp (K)</label>
+                    <input type="number" id="tempRightInput" value="100" class="w-20 bg-gray-700 text-white p-1 rounded text-center">
+                </div>
+                <button id="toggleWallBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors">Remove Wall</button>
+                <button id="resetBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors">Reset</button>
+            </div>
+        </div>
+
+        <!-- Temperature Displays -->
+        <div class="grid grid-cols-2 gap-px bg-gray-600">
+            <div class="temp-display p-3 text-center">
+                <h2 class="text-lg font-semibold">Left Box Temp</h2>
+                <p id="tempLeft" class="text-2xl font-mono">0.00 K</p>
+            </div>
+            <div class="temp-display p-3 text-center">
+                <h2 class="text-lg font-semibold">Right Box Temp</h2>
+                <p id="tempRight" class="text-2xl font-mono">0.00 K</p>
+            </div>
+        </div>
+
+        <!-- Simulation Canvas -->
+        <canvas id="simulationCanvas"></canvas>
+
+        <!-- Graph Canvas -->
+        <div id="graphContainer" class="w-full mt-4">
+             <h2 class="text-lg font-semibold text-center mb-2">Temperature Convergence</h2>
+             <canvas id="graphCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+        const tempLeftEl = document.getElementById('tempLeft');
+        const tempRightEl = document.getElementById('tempRight');
+        const toggleWallBtn = document.getElementById('toggleWallBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const particleCountSlider = document.getElementById('particleCount');
+        const particleCountValue = document.getElementById('particleCountValue');
+        const tempLeftInput = document.getElementById('tempLeftInput');
+        const tempRightInput = document.getElementById('tempRightInput');
+
+
+        // --- Simulation Parameters ---
+        let particleCount = 400;
+        const particleRadius = 3;
+        const particleMass = 1;
+        const tempScale = 100; // Internal scaling factor
+        
+        let particles = [];
+        let wallPresent = true;
+        let animationFrameId;
+
+        // --- Graph Parameters ---
+        let tempHistoryLeft = [];
+        let tempHistoryRight = [];
+        const maxHistory = 500; // Number of data points to show on graph
+
+        // --- Utility Functions ---
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // --- Particle Class ---
+        class Particle {
+            constructor(x, y, vx, vy) {
+                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+                this.radius = particleRadius; this.mass = particleMass;
+            }
+
+            draw() {
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const maxSpeed = 8; // Empirical value for good color range
+                const colorFactor = Math.min(speed / maxSpeed, 1);
+                
+                const r = Math.floor(255 * colorFactor);
+                const b = Math.floor(255 * (1 - colorFactor));
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgb(${r},0,${b})`;
+                ctx.fill();
+            }
+
+            update() {
+                const prevX = this.x; // Store position before update
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wall collision detection for outer walls
+                if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                    this.vx *= -1;
+                    this.x = Math.max(this.radius, Math.min(this.x, canvas.width - this.radius));
+                }
+                if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+                    this.vy *= -1;
+                    this.y = Math.max(this.radius, Math.min(this.y, canvas.height - this.radius));
+                }
+
+                // --- Improved Central Wall Collision ---
+                if (wallPresent) {
+                    const wallX = canvas.width / 2;
+                    const nextX = this.x + this.vx;
+
+                    // Check if particle will cross the wall in the next frame
+                    if (prevX - this.radius < wallX && nextX + this.radius > wallX) { // From left
+                        this.vx *= -1;
+                        this.x = wallX - this.radius - 0.01; // Snap back with a small buffer
+                    } else if (prevX + this.radius > wallX && nextX - this.radius < wallX) { // From right
+                        this.vx *= -1;
+                        this.x = wallX + this.radius + 0.01; // Snap back with a small buffer
+                    }
+                }
+            }
+        }
+
+        // --- Collision Handling ---
+        function resolveCollision(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < p1.radius + p2.radius) {
+                const nx = dx / dist, ny = dy / dist;
+                const tx = -ny, ty = nx;
+                const dpTan1 = p1.vx * tx + p1.vy * ty;
+                const dpTan2 = p2.vx * tx + p2.vy * ty;
+                const dpNorm1 = p1.vx * nx + p1.vy * ny;
+                const dpNorm2 = p2.vx * nx + p2.vy * ny;
+                const m1 = (dpNorm1 * (p1.mass - p2.mass) + 2 * p2.mass * dpNorm2) / (p1.mass + p2.mass);
+                const m2 = (dpNorm2 * (p2.mass - p1.mass) + 2 * p1.mass * dpNorm1) / (p1.mass + p2.mass);
+                
+                p1.vx = tx * dpTan1 + nx * m1; p1.vy = ty * dpTan1 + ny * m1;
+                p2.vx = tx * dpTan2 + nx * m2; p2.vy = ty * dpTan2 + ny * m2;
+                
+                const overlap = 0.5 * (p1.radius + p2.radius - dist + 1);
+                p1.x -= overlap * nx; p1.y -= overlap * ny;
+                p2.x += overlap * nx; p2.y += overlap * ny;
+            }
+        }
+
+        // --- Graph Drawing ---
+        function drawGraph() {
+            const padding = 40;
+            graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            const w = graphCanvas.width - padding * 2;
+            const h = graphCanvas.height - padding * 2;
+
+            // --- Autoscale Y-axis ---
+            let maxTemp = 1; // Avoid division by zero
+            if (tempHistoryLeft.length > 0 || tempHistoryRight.length > 0) {
+                const maxL = tempHistoryLeft.length > 0 ? Math.max(...tempHistoryLeft) : 0;
+                const maxR = tempHistoryRight.length > 0 ? Math.max(...tempHistoryRight) : 0;
+                maxTemp = Math.max(maxL, maxR, 1) * 1.1; // Use 1.1 for some top margin
+            } else {
+                 maxTemp = Math.max(parseFloat(tempLeftInput.value), parseFloat(tempRightInput.value)) * 1.1;
+            }
+
+            graphCtx.save();
+            graphCtx.translate(padding, padding);
+
+            // Draw Y-axis labels
+            graphCtx.fillStyle = '#9ca3af'; // gray-400
+            graphCtx.font = '12px Inter';
+            graphCtx.textAlign = 'right';
+            graphCtx.textBaseline = 'middle';
+            for (let i = 0; i <= 4; i++) {
+                const temp = (maxTemp / 4) * i;
+                const y = h - (temp / maxTemp) * h;
+                graphCtx.fillText(temp.toFixed(0), -10, y);
+            }
+            
+            // Draw X-axis labels (Time)
+            graphCtx.textAlign = 'center';
+            graphCtx.textBaseline = 'top';
+            graphCtx.fillText('Time', w / 2, h + 15);
+
+            // Draw Y-axis label (Temp)
+            graphCtx.save();
+            graphCtx.translate(-padding + 10, h / 2);
+            graphCtx.rotate(-Math.PI / 2);
+            graphCtx.fillText('Temperature (K)', 0, 0);
+            graphCtx.restore();
+
+            // Function to map data point to canvas space
+            const mapPoint = (index, temp) => ({
+                x: (index / maxHistory) * w,
+                y: h - (temp / maxTemp) * h
+            });
+
+            // Draw left temp line (orange)
+            graphCtx.beginPath();
+            graphCtx.strokeStyle = '#f97316'; // orange-500
+            graphCtx.lineWidth = 2;
+            tempHistoryLeft.forEach((temp, i) => {
+                const { x, y } = mapPoint(i, temp);
+                if (i === 0) graphCtx.moveTo(x, y); else graphCtx.lineTo(x, y);
+            });
+            graphCtx.stroke();
+
+            // Draw right temp line (light blue)
+            graphCtx.beginPath();
+            graphCtx.strokeStyle = '#38bdf8'; // sky-400
+            graphCtx.lineWidth = 2;
+            tempHistoryRight.forEach((temp, i) => {
+                const { x, y } = mapPoint(i, temp);
+                if (i === 0) graphCtx.moveTo(x, y); else graphCtx.lineTo(x, y);
+            });
+            graphCtx.stroke();
+            graphCtx.restore();
+
+            // --- Draw Legend ---
+            graphCtx.fillStyle = '#f97316';
+            graphCtx.fillRect(padding, 5, 12, 12);
+            graphCtx.fillStyle = '#d1d5db'; // gray-300
+            graphCtx.fillText('Left Box', padding + 20, 11);
+
+            graphCtx.fillStyle = '#38bdf8';
+            graphCtx.fillRect(padding + 90, 5, 12, 12);
+            graphCtx.fillStyle = '#d1d5db'; // gray-300
+            graphCtx.fillText('Right Box', padding + 108, 11);
+        }
+
+        // --- Simulation Setup & Loop ---
+        function init() {
+            // Set canvas sizes
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = Math.min(window.innerHeight * 0.5, 400);
+            
+            const graphContainer = document.getElementById('graphContainer');
+            graphCanvas.width = graphContainer.clientWidth - 32; // Account for padding
+            graphCanvas.height = 180;
+
+            tempHistoryLeft = []; tempHistoryRight = [];
+            particles = [];
+            const midX = canvas.width / 2;
+            const initialTempLeft = parseFloat(tempLeftInput.value) / tempScale;
+            const initialTempRight = parseFloat(tempRightInput.value) / tempScale;
+
+            for (let i = 0; i < particleCount; i++) {
+                let x, temp;
+                if (i < particleCount / 2) {
+                    x = random(particleRadius, midX - particleRadius);
+                    temp = initialTempLeft;
+                } else {
+                    x = random(midX + particleRadius, canvas.width - particleRadius);
+                    temp = initialTempRight;
+                }
+                const y = random(particleRadius, canvas.height - particleRadius);
+                const vx = random(-1, 1) * temp;
+                const vy = random(-1, 1) * temp;
+                particles.push(new Particle(x, y, vx, vy));
+            }
+
+            wallPresent = true;
+            toggleWallBtn.textContent = 'Remove Wall';
+            toggleWallBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            toggleWallBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let totalKELeft = 0, totalKERight = 0;
+            let countLeft = 0, countRight = 0;
+            const midX = canvas.width / 2;
+
+            particles.forEach(p => { p.update(); });
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    resolveCollision(particles[i], particles[j]);
+                }
+            }
+            particles.forEach(p => { 
+                p.draw();
+                const ke = 0.5 * p.mass * (p.vx * p.vx + p.vy * p.vy);
+                if (p.x < midX) {
+                    totalKELeft += ke; countLeft++;
+                } else {
+                    totalKERight += ke; countRight++;
+                }
+            });
+
+            if (wallPresent) {
+                ctx.beginPath();
+                ctx.moveTo(midX, 0);
+                ctx.lineTo(midX, canvas.height);
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            const tempLeft = (countLeft > 0 ? totalKELeft / countLeft : 0) * tempScale;
+            const tempRight = (countRight > 0 ? totalKERight / countRight : 0) * tempScale;
+            tempLeftEl.textContent = `${tempLeft.toFixed(2)} K`;
+            tempRightEl.textContent = `${tempRight.toFixed(2)} K`;
+            
+            tempHistoryLeft.push(tempLeft);
+            tempHistoryRight.push(tempRight);
+            if(tempHistoryLeft.length > maxHistory) tempHistoryLeft.shift();
+            if(tempHistoryRight.length > maxHistory) tempHistoryRight.shift();
+            drawGraph();
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- Event Listeners ---
+        function resetSimulation() {
+            cancelAnimationFrame(animationFrameId);
+            init();
+            animate();
+        }
+
+        particleCountSlider.addEventListener('input', (e) => {
+            particleCount = parseInt(e.target.value);
+            particleCountValue.textContent = particleCount;
+        });
+        
+        particleCountSlider.addEventListener('change', resetSimulation);
+        tempLeftInput.addEventListener('change', resetSimulation);
+        tempRightInput.addEventListener('change', resetSimulation);
+
+        toggleWallBtn.addEventListener('click', () => {
+            wallPresent = !wallPresent;
+            toggleWallBtn.textContent = wallPresent ? 'Remove Wall' : 'Add Wall';
+            toggleWallBtn.classList.toggle('bg-blue-600');
+            toggleWallBtn.classList.toggle('hover:bg-blue-700');
+            toggleWallBtn.classList.toggle('bg-yellow-600');
+            toggleWallBtn.classList.toggle('hover:bg-yellow-700');
+        });
+
+        resetBtn.addEventListener('click', resetSimulation);
+        window.addEventListener('resize', resetSimulation);
+
+        // --- Initial Start ---
+        init();
+        animate();
+    </script>
+</body>
+</html>
