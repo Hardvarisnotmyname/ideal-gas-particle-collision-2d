@@ -1,128 +1,75 @@
+✨ Ultimate Ideal Gas Simulation ✨
+This isn't just a simulation; it's a digital petri dish. A high-performance, 2D physics playground built with vanilla JavaScript and WebGL, designed to juggle 100,000+ particles in real-time. 🚀
+
+Forget static textbook diagrams. Here, you control the laws of physics. You can crank up the heat until particles move at blistering speeds, freeze them to absolute zero, and smash them together to witness the beautiful, chaotic results. This is your laboratory for exploring everything from the Ideal Gas Law to emergent phenomena that were never explicitly coded.
+
+🎮 The Playground: An Interactive Sandbox
+This simulation is built for experimentation. The controls aren't just settings; they are your tools for discovery.
+
+Control	What it Does	🔬 Experiment Ideas
+Total Particles	Sets the particle count from 0 to 100,000.	Crank it to the max to see large-scale structures form. Or, use a low count to track individual particle journeys.
+Left/Right Temp	Injects kinetic energy! Sets the initial speed of particles.	Phase Transition: Set one side to 0 (absolute zero!) and the other to max. Open the pipe and watch the frozen "crystal" melt and boil!
+Radius	Changes the size of the particles.	How does particle size affect the rate of thermal equilibrium? Make them huge and watch them clog the pipe!
+Pipe Height	Adjusts the size of the opening in the central wall.	Slowly open the pipe between a hot and cold box. Can you create a stable temperature gradient?
+Substeps	Runs physics multiple times per frame for accuracy.	Low substeps lead to chaos and tunneling. High substeps create a more orderly, classical system. Which do you prefer?
+Max Speed	A speed limiter to prevent tunneling.	Dial this down to see how it affects high-energy systems. It's the "realism" knob.
+Collision Mode	Switches between SAP (accurate) and Grid (fast).	The Grid mode allows some overlap, creating fascinating 3D-like cluster effects. SAP keeps things clean.
+Physics Toggles	Enable Gravity, Friction, Drag, or Pressure.	Turn on Gravity and watch the particles collapse into a "star"! Add Drag to see the system slowly cool and die.
+Uncap FPS	Run the simulation as fast as your machine can handle! ⚡	Use this to fast-forward your experiments and see long-term outcomes in seconds.
 
 
-AI Cleaned up Readme
+🤯 Discover Emergent Phenomena
+The most beautiful things in this simulation are the ones that weren't explicitly programmed. These are emergent properties—complex patterns arising from simple rules.
 
-Ultimate Ideal Gas Simulation
-A high-performance, vibe-coded particle simulation in HTML/JS aiming for 100,000 particles
+Wavefronts & Tunneling: At low substeps and high temperatures, particles can "quantum tunnel" through the central wall. This isn't just a bug; it's a feature! By keeping the pipe closed and heating one side, you can generate a coherent wavefront of high-energy particles that phase through the barrier, creating stunning visual pulses.
 
-Overview
-This simulation models two square boxes connected by a variable-width pipe. Each box contains a configurable number of ideal gas particles moving with some velocity. Particles collide elastically with each other and with walls (including the pipe divider), using a Sweep and Prune collision detection algorithm for efficiency.
+Grain Boundaries: Start a simulation with two different temperatures. As the system moves toward equilibrium, you can see faint, shifting lines where the hot and cold regions meet. These are analogous to grain boundaries in polycrystalline materials, where different crystal orientations meet.
 
-The design goal:
+Crystallization & Melting: Use the temperature sliders to create a block of "ice" (temp ≈ 0). Introduce a few high-speed "hot" particles and watch them shatter the crystal structure, creating a cascade of collisions in a beautiful melting effect.
 
-Handle huge particle counts without degenerating into clumpy or blob-like motion.
+🤓 Under the Hood: A Developer's Deep Dive
+So, you want to know how the magic happens? Let's get technical.
 
-Keep collisions realistic and avoid tunneling (or turn tunneling into a creative “feature”).
+Architecture: Main Thread vs. Web Workers
+The simulation is architected into three decoupled parts: the UI Layer, the Renderer, and the PhysicsModule. While currently running on the main thread for simplicity, the PhysicsModule is self-contained and can be easily offloaded to a Web Worker. This would move the heavy physics calculations off the main thread, keeping the UI perfectly responsive even at 100k particles. It's the next logical step for performance purists.
 
-Offer real-time interactive controls for temperature, particle count, pipe width, and more.
+The Particle Data Structure: A Typed Array Powerhouse
+There are no particle class objects here. That would be too slow. Instead, all particle data is stored in a single, massive Float32Array.
 
-Core Features
-Simulation Layout
-Two square boxes on a 16:9 canvas.
+[x1, y1, vx1, vy1, r1, g1, b1, radius1, x2, y2, vx2, vy2, ...]
 
-Pipe in the middle wall — adjustable height.
+This flat data structure is cache-friendly and perfect for blazingly fast iteration and for uploading directly to the GPU.
 
-Pipe toggle — open or close in real time.
+Collision Detection: The Great Trade-Off
+The Collision Mode switch lets you explore a fundamental trade-off in computational physics.
 
-Particle Physics
-Position, velocity, radius, and mass per particle.
+Sweep and Prune (SAP): Your scalpel хирургический_нож:. This is an O(n log n) algorithm that works by sorting all particles along the x-axis. It then "sweeps" across this sorted list, only checking for collisions between particles whose x-intervals overlap. It's elegant, precise, and avoids most unnecessary checks. This is your go-to for physically accurate-looking results.
 
-Elastic collisions between particles and walls.
+Spatial Grid (Hashing): Your sledgehammer 🔨. This O(n) algorithm is brutally effective. It partitions the space into a grid and drops each particle into a cell. Collisions are then only checked between particles in the same cell. It's incredibly fast but can lead to "clumping" and overlaps if particles get too dense in one cell, creating the unique visual artifacts you see in Grid mode.
 
-Sweep and Prune collision detection for efficiency.
+Rendering: From CPU to GPU
+The simulation uses WebGL to achieve 100k particles. It packs the positions, colors, and radii into buffers and uploads them to the GPU. Then, with a single draw call (gl.drawArrays(gl.POINTS, ...)), it tells the GPU to render every single particle. The vertex shader places the particles, and the fragment shader draws them as soft, anti-aliased circles. This is orders of magnitude faster than a traditional 2D canvas arc() loop.
 
-Speed-based color coding:
+📚 On the Shoulders of Giants
+This project was inspired by a long history of computational physics and creative coding. If you find this interesting, you should explore these as well:
 
-Red = hot/fast
+Academic Roots: The simulation is a visual representation of the Maxwell-Boltzmann distribution, which describes particle speeds in a gas.
 
-Blue = cold/slow
+Classic Inspirations: Many of us grew up with "Gas in a Box" Java applets. This project is a modern homage to those early web physics toys.
 
-Quantum tunneling effect: At high speeds, particles can slip through closed walls. This is caused by the step size of updates — and can be exploited for fun effects like wavefronts.
+Modern Sandboxes: Projects like Particle Life and the work of Seb Lague showcase the incredible beauty of emergent systems.
 
-Controls
-Control	Description
-Particles/Box	Number of particles in each box.
-Temp Left	Temperature of the left box. Rescales velocities instantly.
-Temp Right	Temperature of the right box.
-Radius	Particle size (good for low N and visual clarity).
-Pipe Height	Height of the connecting pipe.
-Reset	Resets simulation with new random particles.
-Pause/Resume	Freezes or unfreezes the sim.
-Open/Close Pipe	Toggles the divider opening.
+The Coding Train: Daniel Shiffman has inspired countless people to explore creative coding and physics simulations.
 
-Temperature slider notes:
+🚀 Your Turn to Build!
+This project is open-source and built to be tinkered with. Fork it, break it, make it better.
 
-Zero temperature = “frozen” particles.
+Contribution Ideas:
 
-Re-warming either restores old directions or assigns random new ones.
+Implement a Web Worker: Move the PhysicsModule to a separate thread.
 
-Live Stats
-Left Temp / Right Temp: Derived from RMS velocity.
+Add More Forces: What about electromagnetism? Or custom force fields painted by the user's mouse?
 
-Total Particles.
+True "Accurate Mode": Implement the full conservation of energy and momentum collision formulas.
 
-Collisions/sec.
-
-FPS.
-
-Graphs
-Left Box Temp vs. Time.
-
-Right Box Temp vs. Time.
-
-Auto-adjusting Y-axis for dynamic ranges.
-
-Min, max, and average values displayed.
-
-Room for four graphs (future feature: add long-term and short-term history graphs).
-
-Performance Notes
-Collision detection = ~50% CPU time. Naive method is O(n²), but Sweep and Prune reduces this toward O(n log n).
-
-Rendering = ~50% CPU time (all draw calls via 2D canvas).
-
-WebGL could allow higher particle counts — not implemented yet.
-
-Known Issues
-Tunneling at high speeds: Can be fixed with smaller update steps, but intentionally left in for now as a “wavefront mode.”
-
-No WebGL acceleration — limited by CPU draw calls.
-
-Possible Future Improvements
-Tunneling toggle (strict vs. artistic mode).
-
-More graph options.
-
-Frames-per-collision stat.
-
-WebGL backend.
-
-How It Works
-1. Particle Updates & Wall Collisions
-Particles are updated in small sub-steps to prevent skipping through walls:
-2. Collision Detection (Sweep and Prune)
-Sorted along x and only checking nearby particles cuts down checks:
-3. Temperature Control
-Instantly rescale velocities to match the desired temperature:
-4. Graph Drawing with Dynamic Y-Axis
-Min/max are computed every frame to adjust scale:
-License
-MIT — use, modify, break, and vibe freely.
-
-real readme
-Ok so this is a particle sim written in html aiming for 100k particles with vibe coding O_O. The idea is there are two boxes connected by a pipe of variable width. 
-There are particles in the boxes which are zooming around ie. have some velocity. Particles collide with other particles and dont go thru walls....this part is important and takes a lot of processing or clever pruning
-and still we observe the quantum tunneling effect. Its a feature. But there should be a button or switch to turn it off hopefully but rn you can create a non circular wavefront using this bug (pipe is not opened between
-hot and cold boxes but fast particles still make it through. Also fast particles are red, slow are blue.....draw calls might get expensive for big number of particles but its pretty. So basically 2 boxes with a pipe in
-between and particles, collisions are handled using sweep and prune but faster methods are always better as long as the particles dont become clumpy or bloby.
-Above the boxes there is a slider for number or particles, temperature of left box slider (this sets a temp ie particle velocities in the box using a temp speed scaling factor), temp of right box (same, also temps
-should go down to zero for the sliders cuz we want to see frozen particles get hit by moving ones and a cascade effect) (also temp sliders update the particle velocities in real time if changed and particles dont freeze
-if slider is set to zero and then given a non zero value particles either remember the velocity direction vector or get random velocities assigned, a particle radius slider (optional but good for low n and old people 
-and easy collision checkingvisually), a pipe width slider (also optional but why not), reset pause and open pipe buttons, open pipe becomes close pipe when clicked and should be self explanatory,
-pause is for pause, reset uses the new particle count from the slider and starts a new sim (randomly arranged particles with random velocities acc to temp). There is also a left box temp and right box temp indicators
-which update to indicate the box temps calculated from the particle velocities. After that there is also a total particle counter (can be removed if slider indicated total number of particles instead of particles per
-box, a collision/sec reading and a fps reading, maybe we add a frames per collision or collision per frame reading too but idk if that will be that useful really also hard to read cuz reciprocals and stuff, and finally
-since the boxes are square and monitors are 16x9, we can fit two boxes with all the readings and sliders on top and still have room on the right for two graphs which show the left box temp and right box temp vs time,
-how as one box gets colder the other heats up and stuff. There is space for 4 graphs so maybe in the future there is are two long full history graphs and two dynamic y axis short term graphs. Half the time goes into
-collision detection as it can be O(n^2) if checked naively (its closer to O(n) or O(nlogn) with the spruceandprune i think), the other half goes into draw calls but i have had no luck with webgl.
-sorry for the text wall this is how i think..
+Add More Stats: How about tracking momentum, or graphing the distribution of particle speeds?
