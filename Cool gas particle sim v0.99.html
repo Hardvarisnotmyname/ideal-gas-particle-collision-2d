@@ -34,7 +34,7 @@ body{background:#050505;color:#00ff88;font-family:Courier,monospace;overflow:hid
 <body>
 <div class="container">
   <div class="controls">
-    <div class="control-group"><label>Total Particles</label><input id="particleCount" type="range" min="0" max="100000" step="100" value="10000"><div class="value" id="particleCountValue">10000</div></div>
+    <div class="control-group"><label>Total Particles</label><input id="particleCount" type="range" min="0" max="200000" step="100" value="10000"><div class="value" id="particleCountValue">10000</div></div>
     <div class="control-group"><label>Left Temp</label><input id="leftTemp" type="range" min="0" max="30000" value="5000"><div class="value" id="leftTempValue">0</div></div>
     <div class="control-group"><label>Right Temp</label><input id="rightTemp" type="range" min="0" max="30000" value="500"><div class="value" id="rightTempValue">0</div></div>
     <div class="control-group"><label>Radius</label><input id="radius" type="range" min="1" max="8" value="2"><div class="value" id="radiusValue">2px</div></div>
@@ -451,7 +451,7 @@ let PhysicsModule = (function(){
     CollisionStats.checks = 0;
     
     // Skip collision detection if too many particles for performance
-    if(n > 50000) {
+    if(n > 150000) {
       Module.collisionStats = { collisions: 0, checks: 0 };
       return;
     }
