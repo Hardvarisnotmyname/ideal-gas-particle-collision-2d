@@ -1,75 +1,316 @@
-✨ Ultimate Ideal Gas Simulation ✨
-This isn't just a simulation; it's a digital petri dish. A high-performance, 2D physics playground built with vanilla JavaScript and WebGL, designed to juggle 100,000+ particles in real-time. 🚀
+# Ultimate Ideal Gas Simulation - Interactive Manual
 
-Forget static textbook diagrams. Here, you control the laws of physics. You can crank up the heat until particles move at blistering speeds, freeze them to absolute zero, and smash them together to witness the beautiful, chaotic results. This is your laboratory for exploring everything from the Ideal Gas Law to emergent phenomena that were never explicitly coded.
+## 🔬 What is this?
 
-🎮 The Playground: An Interactive Sandbox
-This simulation is built for experimentation. The controls aren't just settings; they are your tools for discovery.
+Welcome to an advanced particle physics playground! This simulation lets you explore how thousands of particles behave under different physical forces - from basic collisions to complex phenomena like temperature equilibrium, gravity wells, and even Maxwell's famous demon.
 
-Control	What it Does	🔬 Experiment Ideas
-Total Particles	Sets the particle count from 0 to 100,000.	Crank it to the max to see large-scale structures form. Or, use a low count to track individual particle journeys.
-Left/Right Temp	Injects kinetic energy! Sets the initial speed of particles.	Phase Transition: Set one side to 0 (absolute zero!) and the other to max. Open the pipe and watch the frozen "crystal" melt and boil!
-Radius	Changes the size of the particles.	How does particle size affect the rate of thermal equilibrium? Make them huge and watch them clog the pipe!
-Pipe Height	Adjusts the size of the opening in the central wall.	Slowly open the pipe between a hot and cold box. Can you create a stable temperature gradient?
-Substeps	Runs physics multiple times per frame for accuracy.	Low substeps lead to chaos and tunneling. High substeps create a more orderly, classical system. Which do you prefer?
-Max Speed	A speed limiter to prevent tunneling.	Dial this down to see how it affects high-energy systems. It's the "realism" knob.
-Collision Mode	Switches between SAP (accurate) and Grid (fast).	The Grid mode allows some overlap, creating fascinating 3D-like cluster effects. SAP keeps things clean.
-Physics Toggles	Enable Gravity, Friction, Drag, or Pressure.	Turn on Gravity and watch the particles collapse into a "star"! Add Drag to see the system slowly cool and die.
-Uncap FPS	Run the simulation as fast as your machine can handle! ⚡	Use this to fast-forward your experiments and see long-term outcomes in seconds.
+**Perfect for**: STEM students, educators, curious coders, kids fascinated by physics, and anyone who wants to see invisible forces in action!
 
+---
 
-🤯 Discover Emergent Phenomena
-The most beautiful things in this simulation are the ones that weren't explicitly programmed. These are emergent properties—complex patterns arising from simple rules.
+## 🚀 Quick Start
 
-Wavefronts & Tunneling: At low substeps and high temperatures, particles can "quantum tunnel" through the central wall. This isn't just a bug; it's a feature! By keeping the pipe closed and heating one side, you can generate a coherent wavefront of high-energy particles that phase through the barrier, creating stunning visual pulses.
+1. **Hit Reset** to seed fresh particles
+2. **Open the Pipe** to connect the two boxes
+3. **Watch the magic** - hot (red) particles mix with cold (blue) ones
+4. **Check the graphs** to see temperature equilibrium happen in real-time!
 
-Grain Boundaries: Start a simulation with two different temperatures. As the system moves toward equilibrium, you can see faint, shifting lines where the hot and cold regions meet. These are analogous to grain boundaries in polycrystalline materials, where different crystal orientations meet.
+---
 
-Crystallization & Melting: Use the temperature sliders to create a block of "ice" (temp ≈ 0). Introduce a few high-speed "hot" particles and watch them shatter the crystal structure, creating a cascade of collisions in a beautiful melting effect.
+## 🎨 Visual Guide
 
-🤓 Under the Hood: A Developer's Deep Dive
-So, you want to know how the magic happens? Let's get technical.
+### Particle Colors (Speed-Based)
 
-Architecture: Main Thread vs. Web Workers
-The simulation is architected into three decoupled parts: the UI Layer, the Renderer, and the PhysicsModule. While currently running on the main thread for simplicity, the PhysicsModule is self-contained and can be easily offloaded to a Web Worker. This would move the heavy physics calculations off the main thread, keeping the UI perfectly responsive even at 100k particles. It's the next logical step for performance purists.
+- **🔵 Blue**: Slow/cold particles (low kinetic energy)
+- **🟢 Green**: Medium speed particles
+- **🟡 Yellow**: Fast particles
+- **🔴 Red**: Very fast/hot particles (high kinetic energy)
 
-The Particle Data Structure: A Typed Array Powerhouse
-There are no particle class objects here. That would be too slow. Instead, all particle data is stored in a single, massive Float32Array.
+The simulation uses HSL color shifting, so you'll see smooth transitions through the entire spectrum as particle speeds change!
 
-[x1, y1, vx1, vy1, r1, g1, b1, radius1, x2, y2, vx2, vy2, ...]
+---
 
-This flat data structure is cache-friendly and perfect for blazingly fast iteration and for uploading directly to the GPU.
+## 🎛️ Control Panel Guide
 
-Collision Detection: The Great Trade-Off
-The Collision Mode switch lets you explore a fundamental trade-off in computational physics.
+### Basic Controls
 
-Sweep and Prune (SAP): Your scalpel хирургический_нож:. This is an O(n log n) algorithm that works by sorting all particles along the x-axis. It then "sweeps" across this sorted list, only checking for collisions between particles whose x-intervals overlap. It's elegant, precise, and avoids most unnecessary checks. This is your go-to for physically accurate-looking results.
+**Total Particles** (100 - 120,000)
 
-Spatial Grid (Hashing): Your sledgehammer 🔨. This O(n) algorithm is brutally effective. It partitions the space into a grid and drops each particle into a cell. Collisions are then only checked between particles in the same cell. It's incredibly fast but can lead to "clumping" and overlaps if particles get too dense in one cell, creating the unique visual artifacts you see in Grid mode.
+- More particles = more realistic physics but slower performance
+- Sweet spot: 10,000 for most experiments
+- Use Grid mode for 10,000+ particles with gravity/pressure
 
-Rendering: From CPU to GPU
-The simulation uses WebGL to achieve 100k particles. It packs the positions, colors, and radii into buffers and uploads them to the GPU. Then, with a single draw call (gl.drawArrays(gl.POINTS, ...)), it tells the GPU to render every single particle. The vertex shader places the particles, and the fragment shader draws them as soft, anti-aliased circles. This is orders of magnitude faster than a traditional 2D canvas arc() loop.
+**Left/Right Temperature** (0 - 30,000)
 
-📚 On the Shoulders of Giants
-This project was inspired by a long history of computational physics and creative coding. If you find this interesting, you should explore these as well:
+- Sets initial particle speeds in each box
+- Only affects new particles when you Reset
+- Try extreme differences (50 vs 30,000) for dramatic effects!
 
-Academic Roots: The simulation is a visual representation of the Maxwell-Boltzmann distribution, which describes particle speeds in a gas.
+**Particle Radius** (1-12px)
 
-Classic Inspirations: Many of us grew up with "Gas in a Box" Java applets. This project is a modern homage to those early web physics toys.
+- Bigger particles = more collisions
+- Large radius + few particles = easy to follow individual bounces
+- Small radius + many particles = realistic gas behavior
 
-Modern Sandboxes: Projects like Particle Life and the work of Seb Lague showcase the incredible beauty of emergent systems.
+**Pipe Height** (0-100%)
 
-The Coding Train: Daniel Shiffman has inspired countless people to explore creative coding and physics simulations.
+- Controls the opening between boxes
+- 0% = completely sealed
+- 100% = wide open connection
+- Try 1-5% for realistic gas flow effects
 
-🚀 Your Turn to Build!
-This project is open-source and built to be tinkered with. Fork it, break it, make it better.
+### Advanced Physics
 
-Contribution Ideas:
+**Maxwell's Demon** 👹
 
-Implement a Web Worker: Move the PhysicsModule to a separate thread.
+- When ON: Only allows fast particles to move left→right
+- Demonstrates the famous thermodynamics thought experiment
+- **Creates density gradients**: Fast particles accumulate on the right, slow on the left
+- **Demon Threshold**: Sets how fast a particle needs to be (1-250)
+  - Higher = demon is pickier about "fast" particles
+  - Lower = demon lets more particles through
 
-Add More Forces: What about electromagnetism? Or custom force fields painted by the user's mouse?
+**Collision Modes**
 
-True "Accurate Mode": Implement the full conservation of energy and momentum collision formulas.
+- **SAP Mode**: More accurate physics, better for studying collisions
+- **Grid Mode**: Faster performance, creates cool 3D-like effects with large particles
 
-Add More Stats: How about tracking momentum, or graphing the distribution of particle speeds?
+**Force Systems**
+
+- **Gravity**: Particles attract each other (creates clusters/singularities)
+- **Pressure**: Particles repel nearby neighbors (realistic gas pressure)
+- **Friction**: Energy loss during collisions (particles slow down over time)
+- **Drag**: Air resistance effect (fast particles lose more speed)
+
+### Performance Tuning
+
+**Substeps** (1-8)
+
+- Higher = more accurate collision detection
+- Lower = better performance
+- Reduce if simulation feels laggy
+
+**Max Speed** (5-2500)
+
+- Speed limiter to prevent particles from going too fast
+- Lower values = calmer simulation
+
+**Uncap FPS** 🚀
+
+- Progressively increases simulation speed: 60→80→100→120+ FPS
+- Watch temperature equilibrium happen in seconds instead of minutes!
+- May stress your CPU - use with caution
+
+---
+
+## 🧪 Cool Experiments to Try
+
+### 1. **Temperature Equilibrium Classic**
+
+- Set Left: 20,000, Right: 50
+- Open pipe to 2%
+- Watch hot particles slowly warm up the cold side
+- Observe graphs reaching equilibrium
+
+### 2. **Rocket Nozzle Effect**
+
+- Make left side very hot (25,000+)
+- Keep right side cold (50)
+- Open pipe just 1%
+- See high-pressure gas escaping through small opening
+
+### 3. **Gravity Wells & Clusters**
+
+- Turn on Gravity
+- Use Grid mode for performance
+- Watch particles form clusters and orbital patterns
+- Try with large radius for clearer visualization
+
+### 4. **Collision Physics Demo**
+
+- Set particles to ~500 total
+- Increase radius to 8-12
+- Use SAP mode for accuracy
+- Watch individual particle bounces clearly
+
+### 5. **Maxwell's Demon Paradox**
+
+- Enable Maxwell's Demon
+- Set threshold around 50
+- Demon "cheats" thermodynamics by sorting particles
+- Watch density gradients form - fast particles pile up on the right!
+- See if you can break the second law!
+
+### 6. **Density Gradient Study**
+
+- Use Maxwell's Demon with threshold ~100
+- Start with equal temperatures on both sides
+- Watch particles naturally separate by speed/density
+- Perfect demonstration of selective permeability
+
+### 6. **Density Gradient Study**
+
+- Use Maxwell's Demon with threshold ~100
+- Start with equal temperatures on both sides
+- Watch particles naturally separate by speed/density
+- Perfect demonstration of selective permeability
+
+### 7. **Pressure Cooker**
+
+- Small pipe opening (1%)
+- High particle count (50,000+)
+- Turn on Pressure forces
+- Watch realistic gas dynamics
+
+### 8. **Friction & Drag Studies**
+
+- Start with high-energy particles
+- Enable Friction and/or Drag
+- Watch the system slowly lose energy
+- Perfect for studying energy dissipation
+
+---
+
+## ⚡ Performance Guide
+
+### Smooth Performance (60+ FPS)
+
+- **Up to 10,000 particles**: Any settings work well
+- **10,000-50,000 particles**: Use Grid mode, avoid Gravity+Pressure
+- **50,000+ particles**: Grid mode only, minimal effects
+
+### When Things Get Slow
+
+1. **Switch to Grid mode** (faster than SAP)
+2. **Reduce Substeps** to 1-2
+3. **Turn off Gravity and Pressure** (most CPU-intensive)
+4. **Lower particle count** temporarily
+5. **Reduce particle radius**
+
+### For Maximum Speed
+
+- Enable **Uncap FPS** (gradually increases to your display's max refresh rate)
+- Use **Grid collision mode**
+- Keep **Substeps** at 1-2
+- Disable **Gravity** and **Pressure**
+
+---
+
+## 📊 Reading the Data
+
+### Stats Panel
+
+- **FPS**: Rendering frame rate (higher = smoother visuals)
+- **Target FPS**: Simulation speed (increases with Uncap FPS)
+- **Collisions/sec**: How many particle bounces per second
+- **Collision Checks**: CPU work for collision detection
+- **Left/Right Box Temp**: Average particle speed in each side
+
+### Temperature Graphs
+
+- **Recent**: Last ~2 minutes of data (good for watching changes)
+- **Full**: Complete simulation history (shows long-term trends)
+- **Watch for**: Equilibrium (both sides reaching same temperature)
+
+---
+
+## 🎓 Physics Concepts Demonstrated
+
+- **Kinetic Theory of Gases**: Particle motion represents molecular motion
+- **Thermodynamic Equilibrium**: Hot and cold sides eventually balance
+- **Maxwell-Boltzmann Distribution**: Particle speed distributions
+- **Collision Dynamics**: Elastic and inelastic collisions
+- **Pressure**: Force from particle collisions with boundaries
+- **Phase Transitions**: Watch particles cluster under gravity
+- **Energy Conservation**: Total system energy (with friction off)
+- **Entropy**: System disorder and the second law of thermodynamics
+
+---
+
+## 💡 Tips & Tricks
+
+### For Educators
+
+- Start students with simple setups (few particles, large radius)
+- Use the pause button to discuss what's happening
+- Reset graphs when starting new experiments
+- Uncap FPS to speed through equilibrium demonstrations
+
+### For Visual Learners
+
+- Large particles (radius 8+) make individual collisions visible
+- Extreme temperatures (50 vs 30,000) create dramatic color contrasts
+- Grid mode with gravity creates beautiful clustering patterns
+
+### For Performance Testing
+
+- See how many particles your device can handle
+- Test different collision modes
+- Experiment with all force combinations
+
+---
+
+## 🔧 Troubleshooting
+
+**Simulation running slowly?**
+
+- Reduce particle count or switch to Grid mode
+- Turn off Gravity and Pressure for 10,000+ particles
+- Lower Substeps to 1-2
+
+**Simulation frozen or hanging?**
+
+- **Reset all settings to defaults** - sometimes extreme combinations cause issues
+- Hit Reset button to clear corrupted particle states
+- Reload the page if completely stuck
+
+**Particles behaving weirdly?**
+
+- Hit Reset to clear any accumulated errors
+- Check if Max Speed is too low
+- Make sure Pipe Height isn't at 0% when you want mixing
+
+**Graphs not updating?**
+
+- They update automatically - wait a few seconds
+- Hit Reset to clear old data
+
+**Maxwell's Demon not working?**
+
+- Make sure there's actually a speed difference between sides
+- Adjust Demon Threshold - try values between 10-100
+- The demon works even with pipes closed!
+
+---
+
+## 🌟 Advanced Notes
+
+This simulation uses optimized algorithms to handle thousands of particles in real-time:
+
+- **Spatial partitioning** for efficient collision detection
+- **WebGL rendering** when available (falls back to 2D canvas)
+- **Adaptive physics stepping** for smooth performance
+- **Force approximation** for gravity/pressure calculations
+
+The physics engine separates collision detection (SAP vs Grid) from force calculations, allowing you to mix and match for different effects and performance characteristics.
+
+---
+
+**Have fun exploring the invisible world of particle physics! 🚀**
+
+## 🎯 Push the Limits!
+
+**Don't be afraid to break things!** This simulation is built to handle extreme conditions:
+
+- Crank particles to 120,000 and see what happens
+- Turn on ALL forces at once and watch chaos unfold
+- Set ridiculous temperatures (30,000 vs 0) and observe the mayhem
+- Find the breaking point of your device - where does it start to lag?
+- Discover weird edge cases and unexpected behaviors
+- **You are only limited by your imagination!**
+
+The best way to learn physics is to push systems beyond their normal operating ranges. Go wild, experiment, and see what fascinating phenomena emerge from the complex interactions of simple rules.
+
+---
+
+*Remember: This is a simplified model - real gases have quantum effects, intermolecular forces, and other complexities not shown here. But the fundamental principles are all accurate!*
