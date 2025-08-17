@@ -1,13 +1,13 @@
-# Ultimate Ideal Gas Simulation - Interactive Manual
+# Ultimate Ideal Gas Simulation - VC funded project
 
-## 🔬 What is this?
+## 🔬 What's this?
 
-Welcome to an advanced particle physics playground! This simulation lets you explore how thousands of particles behave under different physical forces - from basic collisions to complex phenomena like temperature equilibrium, gravity wells, and even Maxwell's famous demon.
+Welcome to an advanced particle physics playground! This simulation lets you explore how thousands of particles behave under different physical forces - from basic collisions to complex phenomena like temperature equilibrium, gravity wells, and even a mini universe.
 
-**Perfect for**: STEM students, educators, curious coders, kids fascinated by physics, and anyone who wants to see invisible forces in action!
+**Probably For**: STEM students, educators, curious coders, kids fascinated by physics, and anyone who wants to see invisible forces in action!
 
 ---
-
+i hate this ai generated garbage readme so here's a screenshot.. just download the html and it should run, fix it yourself if it doesnt, lu bye.
 <img width="1912" height="974" alt="image" src="https://github.com/user-attachments/assets/66d0c99c-0f91-490c-bd3e-8fa602767a86" />
 
 
