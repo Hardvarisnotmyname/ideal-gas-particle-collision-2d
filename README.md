@@ -8,6 +8,9 @@ Welcome to an advanced particle physics playground! This simulation lets you exp
 
 ---
 
+<img width="1912" height="974" alt="image" src="https://github.com/user-attachments/assets/66d0c99c-0f91-490c-bd3e-8fa602767a86" />
+
+
 ## 🚀 Quick Start
 
 1. **Hit Reset** to seed fresh particles
