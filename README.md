@@ -33,6 +33,11 @@ The simulation uses HSL color shifting, so you'll see smooth transitions through
 
 ---
 
+
+another nice picture sprinkled in, try to use the settings you see to get the same, hopefully it should work, if not open the config values and spend hours tweaking the constants and magic numbers :D
+<img width="1911" height="977" alt="image" src="https://github.com/user-attachments/assets/a47b5537-40c6-4662-ac06-6cd09111431e" />
+
+
 ## 🎛️ Control Panel Guide
 
 ### Basic Controls
