@@ -116,6 +116,7 @@ one day this will be a real readme
 - May stress your CPU - use with caution
 
 ---
+Hey guys compressing screen recordings with high bitrate to gifs under 10mb is so much fun especially if you dont know sh...
 ![Animation1](https://github.com/user-attachments/assets/fcc0c68d-6828-4565-82c5-81401a1cda28)
 
 ## 🧪 Cool Experiments to Try
