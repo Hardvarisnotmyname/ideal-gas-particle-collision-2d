@@ -186,6 +186,7 @@ Hey guys compressing screen recordings with high bitrate to gifs under 10mb is s
 - Perfect for studying energy dissipation
 
 ---
+![Animation2](https://github.com/user-attachments/assets/5e1f00fd-e2bd-4e06-a315-128de964e04b)
 
 ## ⚡ Performance Guide
 
