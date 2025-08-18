@@ -69,6 +69,10 @@ another nice picture sprinkled in, try to use the settings you see to get the sa
 - 100% = wide open connection
 - Try 1-5% for realistic gas flow effects
 
+one day this will be a real readme
+<img width="1914" height="983" alt="image" src="https://github.com/user-attachments/assets/b7844257-58d7-4cca-96d3-a2c86d7116f7" />
+
+
 ### Advanced Physics
 
 **Maxwell's Demon** 👹
