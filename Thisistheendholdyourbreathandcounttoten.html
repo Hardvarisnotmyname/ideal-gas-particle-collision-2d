@@ -134,12 +134,12 @@ body{background:#050505;color:#00ff88;font-family:Courier,monospace;overflow:hid
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Only applies expensive forces (gravity/pressure) to this fraction of particles each frame for better performance">Force Sampling</label>
-      <input id="forceSampling" type="range" min="0.01" max="1.0" step="0.01" value="0.1">
+      <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.1">
       <div class="value" id="forceSamplingValue">Auto</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
-      <input id="pressureStrength" type="range" min="1" max="500" value="40">
+      <input id="pressureStrength" type="range" min="1" max="500" value="150">
       <div class="value" id="pressureStrengthValue">80</div>
     </div>
     <div class="control-group">
@@ -346,7 +346,7 @@ let PhysicsModule = (function(){
   
   // Spatial grid for force calculations
   let spatialGrid = null;
-  let gridCellSize = 40;
+  let gridCellSize = 20;
   let gridWidth = 0;
   let gridHeight = 0;
 
@@ -478,7 +478,7 @@ let PhysicsModule = (function(){
     let forceFraction = cfg.forceSampling;
     if (forceFraction >= 1.0) {
       // Auto-scaling when set to 100%
-      if (n > 50000) forceFraction = 0.1;      // 1/10th for very high counts
+      if (n > 50000) forceFraction = 0.02;      // 1/50th for very high counts
       else if (n > 20000) forceFraction = 0.025; // 1/40th for high counts  
       else if (n > 10000) forceFraction = 0.05;  // 1/20 for medium counts
     }
@@ -548,9 +548,8 @@ let PhysicsModule = (function(){
                   const dxp = p[jdx] - x;
                   const dyp = p[jdx + 1] - y;
                   const dist2 = dxp * dxp + dyp * dyp;
-                  if (!(dist2 > EPS)) continue; // skip zero/near-zero to avoid 1/0
 
-                  if(dist2 < 10) continue; // avoid singularity
+                  if(dist2 < 1) continue; // avoid singularity// skip zero/near-zero to avoid 1/0
                   				
                   // unit normal without creating NaNs
                   const invDist = 1 / Math.sqrt(dist2);
@@ -559,7 +558,7 @@ let PhysicsModule = (function(){
 
                   // Gravity (attractive) - compensate for sampling by scaling force
                   if (cfg.gravity && cellDist2 <= gravityRange * gravityRange) {
-                    const gravForce = (cfg.gravityStrength * invDist*forceFraction)+1;
+                    const gravForce = (cfg.gravityStrength * invDist*forceFraction)*10;
                     fx += nx * gravForce;
                     fy += ny * gravForce;
                   }
@@ -570,7 +569,7 @@ let PhysicsModule = (function(){
                     // use dist via invDist without another sqrt
                     const dist = 1 / invDist;
                     if (dist < maxPressDist) {
-                      const pressForce = (cfg.pressureStrength * invDist*forceFraction)+1;
+                      const pressForce = (cfg.pressureStrength * invDist*forceFraction*0.6);
                       fx -= nx * pressForce;
                       fy -= ny * pressForce;
                     }
@@ -822,7 +821,7 @@ let PhysicsModule = (function(){
         const cellSize = cellArr.length;
         
         // Skip very dense cells for performance
-        //if(cellSize > 100) continue;
+        if(cellSize > 100) continue;
         
         for(let a=0;a<cellSize;a++){
           for(let b=a+1;b<cellSize;b++){
