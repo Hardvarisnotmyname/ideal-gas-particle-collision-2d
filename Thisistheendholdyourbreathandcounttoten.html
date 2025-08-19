@@ -102,7 +102,7 @@ body{background:#050505;color:#00ff88;font-family:Courier,monospace;overflow:hid
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls particle size, bigger particles collide more">Radius</label>
-      <input id="radius" type="range" min="1" max="12" value="2"  >
+      <input id="radius" type="range" min="1" max="32" value="2"  >
       <div class="value" id="radiusValue">2px</div>
     </div>
     <div class="control-group">
@@ -346,7 +346,7 @@ let PhysicsModule = (function(){
   
   // Spatial grid for force calculations
   let spatialGrid = null;
-  let gridCellSize = 20;
+  let gridCellSize = 40;
   let gridWidth = 0;
   let gridHeight = 0;
 
@@ -649,7 +649,7 @@ let PhysicsModule = (function(){
         y += vy * dt;
 
         // Boundary collisions with restitution
-        const restitution = 0.9; // energy loss on wall collision
+        const restitution = 1; // energy loss on wall collision
         if (x - r < 0) { x = r; vx = Math.abs(vx) * restitution; }
         if (x + r > w) { x = w - r; vx = -Math.abs(vx) * restitution; }
         if (y - r < 0) { y = r; vy = Math.abs(vy) * restitution; }
@@ -801,7 +801,7 @@ let PhysicsModule = (function(){
       }
     } else {
       // Optimized grid collision detection
-      const cell = Math.max(20, cfg.radius*3); // smaller cells for better distribution
+      const cell = Math.max(8, cfg.radius*3); // smaller cells for better distribution
       const gw = Math.ceil(cfg.width/cell);
       const gh = Math.ceil(cfg.height/cell);
       const grid = new Array(gw*gh);
@@ -822,7 +822,7 @@ let PhysicsModule = (function(){
         const cellSize = cellArr.length;
         
         // Skip very dense cells for performance
-        if(cellSize > 20) continue;
+        //if(cellSize > 100) continue;
         
         for(let a=0;a<cellSize;a++){
           for(let b=a+1;b<cellSize;b++){
