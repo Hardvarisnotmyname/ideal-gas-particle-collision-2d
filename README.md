@@ -244,6 +244,10 @@ Hey guys compressing screen recordings with high bitrate to gifs under 10mb is s
 
 ---
 
+NEW FEATURE SCREENSHOT!!!
+<img width="1910" height="981" alt="image" src="https://github.com/user-attachments/assets/1eff527d-8a88-40ac-a1d6-4e683dd19306" />
+
+
 ## 💡 Tips & Tricks
 
 ### For Educators
