@@ -8,12 +8,12 @@
 body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif;overflow:hidden}
 
 .container{width:100vw;height:100vh;display:flex;flex-direction:column}
-.controls{height:100px;background:linear-gradient(135deg,#111,#1b1b1b);border-bottom:1px solid 	#990000;padding:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls{height:100px;background:linear-gradient(135deg,#1C0000,#000E1C);border-bottom:2px solid 	#04006E;padding:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .control-group{display:flex;flex-direction:column;align-items:center;min-width:10px;position:relative}
-.control-group label{font-size:13px;margin-bottom:0px;color:#808080;cursor:help}
-.control-group input[type=range]{width:90px;cursor:pointer;background:#990000;border-radius:10px;height:4px}
-.control-group input[type=range]::-webkit-slider-track{background:#990000;border-radius:10px;height:4px;border:1px solid #3a3a3a}
-.control-group input[type=range]::-moz-range-track{background:#990000;border-radius:10px;height:4px;border:1px solid #3a3a3a}
+.control-group label{font-size:13px;margin-bottom:-2px;color:#A1A1A1;cursor:help}
+.control-group input[type=range]{width:90px;cursor:pointer;background:#04006E;border-radius:10px;height:4px}
+.control-group input[type=range]::-webkit-slider-track{background:#04006E;border-radius:10px;height:4px;border:1px solid #3a3a3a}
+.control-group input[type=range]::-moz-range-track{background:#04006E;border-radius:10px;height:4px;border:1px solid #3a3a3a}
 .control-group input[type=range]::-webkit-slider-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;appearance:none}
 .control-group input[type=range]::-moz-range-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;cursor:pointer}
 .control-group .value{font-size:10px;color:#ff9900;margin-top:2px}
@@ -25,10 +25,10 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
 .simulation-area{flex:1;position:relative}
 #canvas{width:100%;height:100%;background:#1a1a1a;display:block}
 
-.stats-graphs{width:320px;background:#1e1e1e;border-left:2px solid #990000;padding:4px;display:flex;flex-direction:column;gap:8px}
+.stats-graphs{width:320px;background:#1e1e1e;border-left:2px solid #04006E;padding:4px;display:flex;flex-direction:column;gap:8px}
 .stats{background:#010f1c;border:1px solid #3a3a3a;border-radius:6px;padding:8px;font-size:12px;color:#e0e0e0}
 .stat-row{display:flex;justify-content:space-between;margin-bottom:4px}
-.graph{background:#010f1c;border:1px solid #990000;border-radius:6px;height:120px;position:relative;padding:2px}
+.graph{background:#010f1c;border:1px solid #04006E;border-radius:6px;height:120px;position:relative;padding:2px}
 .graph canvas{width:100%;height:100%}
 .graph-title{position:absolute;left:8px;top:6px;font-size:12px;color:#c4c4c4}
 .loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#e0e0e0}
@@ -70,7 +70,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
 /* Tooltip Styles */
 .tooltip {position: relative;cursor: help;}
 .tooltip::after {content: attr(data-tooltip);position: absolute;top:125%;left:50%;transform: translateX(-50%);background:#111;color:#e0e0e0;padding:8px 12px;border-radius:6px;border:1px solid #ef4444;font-size:11px;white-space: nowrap;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;pointer-events:none;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.5);max-width:300px;white-space:normal;text-align:center;line-height:1.3;}
-.tooltip::before {content: '';position: absolute;top:116%;left:50%;transform: translateX(-50%);border: 6px solid transparent;border-bottom-color: #990000;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;z-index:1001;}
+.tooltip::before {content: '';position: absolute;top:116%;left:50%;transform: translateX(-50%);border: 6px solid transparent;border-bottom-color: #04006E;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;z-index:1001;}
 .tooltip:hover::after,.tooltip:hover::before{opacity:1;visibility:visible;}
 
 </style>
@@ -102,56 +102,56 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
       <label class="tooltip" data-tooltip="Particles hate each other">Pressure</label>
       <div class="switch">
         <input type="checkbox" id="pressureToggle">
-        <div id="pressureLabel" style="color:#00dd77" >Off</div>
+        <div id="pressureLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
-      <input id="pressureStrength" type="range" min="1" max="500" value="150">
-      <div class="value" id="pressureStrengthValue">150</div>
+      <input id="pressureStrength" type="range" min="1" max="30" value="5">
+      <div class="value" id="pressureStrengthValue">5</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Make particles horny for each other!!!">Gravity</label>
       <div class="switch">
         <input type="checkbox" id="gravityToggle">
-        <div id="gravityLabel" style="color:#00dd77">Off</div>
+        <div id="gravityLabel" style="color:#7A5836">Off</div>
       </div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of gravitational attraction between particles">Gravity Strength</label>
-      <input type="range" id="gravityStrength" min="0" max="500" step="1" value="100">
-      <div class="value" id="gravityStrengthValue">100</div>
+      <input type="range" id="gravityStrength" min="0" max="100" step="1" value="10">
+      <div class="value" id="gravityStrengthValue">10</div>
     </div>
 
     <div class="control-group">
       <label class="tooltip" data-tooltip="Power law exponent for gravity force (2 = inverse square law)">Gravity Exponent</label>
-      <input type="range" id="gravityExponent" min="0.5" max="4" step="0.1" value="2">
+      <input type="range" id="gravityExponent" min="0.1" max="3" step="0.1" value="2">
       <div class="value" id="gravityExponentValue">2.0</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Particles loose energy when they collide">Friction</label>
       <div class="switch">
         <input type="checkbox" id="frictionToggle">
-        <div id="frictionLabel" style="color:#00dd77" >Off</div>
+        <div id="frictionLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Particles loose speed slowly, fast particles loose more">Drag</label>
       <div class="switch">
         <input type="checkbox" id="dragToggle" >
-        <div id="dragLabel" style="color:#00dd77" >Off</div>
+        <div id="dragLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Air resistance coefficient - higher values slow particles more">Drag Coefficient</label>
-      <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.015">
-      <div class="value" id="dragCoeffValue">0.015</div>
+      <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.05">
+      <div class="value" id="dragCoeffValue">0.05</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Progressively increases target FPS: 60→70→80→90... up to your display's maximum refresh rate">Uncap FPS</label>
       <div class="switch">
         <input type="checkbox" id="uncapFpsToggle" >
-        <div id="uncapFpsLabel" style="color:#00dd77" >Off</div>
+        <div id="uncapFpsLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
 
@@ -159,7 +159,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
       <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">Collision Mode</label>
       <div class="switch">
         <input type="checkbox" id="collisionMode" checked="">
-        <div id="collisionModeLabel" style="color:#00dd77" class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">SAP</div>
+        <div id="collisionModeLabel" style="color:#7A5836" class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">SAP</div>
       </div>
 	</div>
     
@@ -177,7 +177,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
       <label class="tooltip" data-tooltip="Demon likes to be right so only lets hot particles in the right box">Maxwell's Demon</label>
       <div class="switch">
         <input type="checkbox" id="maxwellToggle">
-        <div id="maxwellLabel" style="color:#00dd77" >Off</div>
+        <div id="maxwellLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
     <div class="control-group">
@@ -197,7 +197,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Only applies expensive forces (gravity/pressure) to this fraction of particles each frame for better performance">Force Sampling</label>
-      <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.1">
+      <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.05">
       <div class="value" id="forceSamplingValue">Auto</div>
     </div>
   </div>
@@ -248,12 +248,12 @@ const config = {
   maxwellDemon: false,
   demonSpeedThreshold: 10,
   uncapFps: false,
-  gravityStrength: 100,
+  gravityStrength: 10,
   gravityExponent: 2.0,
   frictionCoeff: 0.98,
-  dragCoeff: 0.015,
-  pressureStrength: 150,
-  forceSampling: 0.1
+  dragCoeff: 0.05,
+  pressureStrength: 5,
+  forceSampling: 0.05
 };
 
 let canvas = document.getElementById('canvas');
@@ -538,7 +538,7 @@ let PhysicsModule = (function(){
           const gx = Math.floor(x / gridCellSize);
           const gy = Math.floor(y / gridCellSize);
           if (Number.isFinite(gx) && Number.isFinite(gy)) { // guard NaN indices
-            const gravityRange = cfg.gravity ? 1 : 0;
+            const gravityRange = cfg.gravity ? 2 : 0;
             const pressureRange = cfg.pressure ? 1 : 0;
             const maxRange = Math.max(gravityRange, pressureRange);
 			let gravForce = 0;
