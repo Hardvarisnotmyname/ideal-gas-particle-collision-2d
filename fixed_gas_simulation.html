@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ultimate Ideal Gas Simulation – Optimized</title>
+<style>/* Modern Dark Minimal - Dark Gray & Red */
+*{margin:2;padding:0;box-sizing:border-box}
+body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif;overflow:hidden}
+
+.container{width:100vw;height:100vh;display:flex;flex-direction:column}
+.controls{height:100px;background:#000005;border-bottom:1px solid 	#990000;padding:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.control-group{display:flex;flex-direction:column;align-items:center;min-width:10px;position:relative}
+.control-group label{font-size:13px;margin-bottom:0px;color:#ff0000;cursor:help}
+.control-group input[type=range]{width:90px;cursor:pointer;background:#990000;border-radius:10px;height:4px}
+.control-group input[type=range]::-webkit-slider-track{background:#990000;border-radius:10px;height:4px;border:1px solid #3a3a3a}
+.control-group input[type=range]::-moz-range-track{background:#990000;border-radius:10px;height:4px;border:1px solid #3a3a3a}
+.control-group input[type=range]::-webkit-slider-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;appearance:none}
+.control-group input[type=range]::-moz-range-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;cursor:pointer}
+.control-group .value{font-size:10px;color:#ff9900;margin-top:2px}
+
+.button{background:#000000;border:1px solid #b91c1c;color:#ffffff;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:11px}
+.button:hover{background:#b91c1c;color:#ffffff;}
+
+.main-content{flex:1;display:flex;height:calc(100vh - 120px)}
+.simulation-area{flex:1;position:relative}
+#canvas{width:100%;height:100%;background:#1a1a1a;display:block}
+
+.stats-graphs{width:320px;background:#1e1e1e;border-left:2px solid #990000;padding:4px;display:flex;flex-direction:column;gap:8px}
+.stats{background:#010f1c;border:1px solid #3a3a3a;border-radius:6px;padding:8px;font-size:12px;color:#e0e0e0}
+.stat-row{display:flex;justify-content:space-between;margin-bottom:4px}
+.graph{background:#010f1c;border:1px solid #990000;border-radius:6px;height:120px;position:relative;padding:2px}
+.graph canvas{width:100%;height:100%}
+.graph-title{position:absolute;left:8px;top:6px;font-size:12px;color:#c4c4c4}
+.loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#e0e0e0}
+
+.switch{display:flex;align-items:center;gap:12px}
+.switch input {
+  width: 34px;
+  height: 18px;
+  appearance: none;
+  background: #012235;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid #3a3a3a;
+}
+
+.switch input:checked {
+  background: #ef4444;
+}
+
+.switch input::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #121212;
+  left: 3px;               /* add small left padding */
+  top: 50%;                /* center vertically */
+  transform: translateY(-50%); /* truly center */
+  transition: transform .18s, left .18s;
+}
+
+.switch input:checked::before {
+  transform: translateY(-50%) translateX(16px); /* move thumb on check */
+  background: #1a1a1a;
+}
+
+/* Tooltip Styles */
+.tooltip {position: relative;cursor: help;}
+.tooltip::after {content: attr(data-tooltip);position: absolute;top:125%;left:50%;transform: translateX(-50%);background:#111;color:#e0e0e0;padding:8px 12px;border-radius:6px;border:1px solid #ef4444;font-size:11px;white-space: nowrap;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;pointer-events:none;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.5);max-width:300px;white-space:normal;text-align:center;line-height:1.3;}
+.tooltip::before {content: '';position: absolute;top:116%;left:50%;transform: translateX(-50%);border: 6px solid transparent;border-bottom-color: #990000;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;z-index:1001;}
+.tooltip:hover::after,.tooltip:hover::before{opacity:1;visibility:visible;}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="controls">
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Controls total no of particles, use grid mode if too many particles are lagging the sim">Total Particles</label>
+      <input id="particleCount" type="range" min="100" max="200000" step="100" value="10000" >
+      <div class="value" id="particleCountValue">10000</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Controls the starting speed of the particles in the left box, updates real-time">Left Temp</label>
+      <input id="leftTemp" type="range" min="0" max="30000" value="5000" >
+      <div class="value" id="leftTempValue">5000</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Controls the starting speed of the particles in the right box, updates real-time">Right Temp</label>
+      <input id="rightTemp" type="range" min="0" max="30000" value="50">
+      <div class="value" id="rightTempValue">50</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Controls particle size, bigger particles collide more">Radius</label>
+      <input id="radius" type="range" min="1" max="32" value="2"  >
+      <div class="value" id="radiusValue">2px</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Particles hate each other">Pressure</label>
+      <div class="switch">
+        <input type="checkbox" id="pressureToggle">
+        <div id="pressureLabel" style="color:#00dd77" >Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
+      <input id="pressureStrength" type="range" min="1" max="500" value="150">
+      <div class="value" id="pressureStrengthValue">150</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Make particles horny for each other!!!">Gravity</label>
+      <div class="switch">
+        <input type="checkbox" id="gravityToggle">
+        <div id="gravityLabel" style="color:#00dd77">Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Strength of gravitational attraction between particles">Gravity Strength</label>
+      <input type="range" id="gravityStrength" min="0" max="500" step="1" value="100">
+      <div class="value" id="gravityStrengthValue">100</div>
+    </div>
+
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Power law exponent for gravity force (2 = inverse square law)">Gravity Exponent</label>
+      <input type="range" id="gravityExponent" min="0.5" max="4" step="0.1" value="2">
+      <div class="value" id="gravityExponentValue">2.0</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Particles loose energy when they collide">Friction</label>
+      <div class="switch">
+        <input type="checkbox" id="frictionToggle">
+        <div id="frictionLabel" style="color:#00dd77" >Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Particles loose speed slowly, fast particles loose more">Drag</label>
+      <div class="switch">
+        <input type="checkbox" id="dragToggle" >
+        <div id="dragLabel" style="color:#00dd77" >Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Air resistance coefficient - higher values slow particles more">Drag Coefficient</label>
+      <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.015">
+      <div class="value" id="dragCoeffValue">0.015</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Progressively increases target FPS: 60→70→80→90... up to your display's maximum refresh rate">Uncap FPS</label>
+      <div class="switch">
+        <input type="checkbox" id="uncapFpsToggle" >
+        <div id="uncapFpsLabel" style="color:#00dd77" >Off</div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">Collision Mode</label>
+      <div class="switch">
+        <input type="checkbox" id="collisionMode" checked="">
+        <div id="collisionModeLabel" style="color:#00dd77" class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">SAP</div>
+      </div>
+	</div>
+    
+    <button class="button" id="resetBtn">Reset</button>
+    <button class="button" id="pauseBtn">Pause</button>
+    <button class="button" id="pipeBtn">Open Pipe</button>
+	
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Controls size of opening in the middle, higher value opens more">Pipe Height</label>
+      <input id="pipeHeight" type="range" min="0" max="100" value="1"  >
+      <div class="value" id="pipeHeightValue">1%</div>
+    </div>
+	
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Demon likes to be right so only lets hot particles in the right box">Maxwell's Demon</label>
+      <div class="switch">
+        <input type="checkbox" id="maxwellToggle">
+        <div id="maxwellLabel" style="color:#00dd77" >Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="250=demon wants the hottest particles only, 1= demon likes partcles which are moving.">Demon Threshold</label>
+      <input id="demonThreshold" type="range" min="1" max="250" value="10">
+      <div class="value" id="demonThresholdValue">10</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="helps in collision detection when particles pass through closed wall, lower to boost sim speed">Substeps</label>
+      <input id="substeps" type="range" min="1" max="8" value="2" >
+      <div class="value" id="substepsValue">2</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Slow all particles down">Max Speed</label>
+      <input id="tunneling" type="range" min="5" max="2500" value="2500">
+      <div class="value" id="tunnelingValue">2500</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Only applies expensive forces (gravity/pressure) to this fraction of particles each frame for better performance">Force Sampling</label>
+      <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.1">
+      <div class="value" id="forceSamplingValue">Auto</div>
+    </div>
+  </div>
+  
+  <div class="main-content">
+    <div class="simulation-area">
+      <canvas id="canvas" width="1510" height="832" style="width: 1208px; height: 665.6px;"></canvas>
+      <div class="loading" id="loading" style="display: none;">Seeding particles...</div>
+    </div>
+    <div class="stats-graphs">
+      <div class="stats" id="stats">
+        <div class="stat-row"><span>FPS:</span><span id="fps">60</span></div>
+        <div class="stat-row"><span>Target FPS:</span><span id="targetFps">60</span></div>
+        <div class="stat-row"><span>Collisions/sec:</span><span id="collisionRate">124</span></div>
+        <div class="stat-row"><span>Collision Checks:</span><span id="collisionChecks">9074</span></div>
+        <div class="stat-row"><span>Left Box Temp:</span><span id="leftBoxTemp">60.46</span></div>
+        <div class="stat-row"><span>Right Box Temp:</span><span id="rightBoxTemp">8.27</span></div>
+        <div class="stat-row"><span>Total Particles:</span><span id="totalParticles">10000</span></div>
+      </div>
+      <div class="graph"><div class="graph-title">Left Temp (Recent)</div><canvas id="leftTempRecentGraph" width="280" height="90"></canvas></div>
+      <div class="graph"><div class="graph-title">Right Temp (Recent)</div><canvas id="rightTempRecentGraph" width="280" height="90"></canvas></div>
+      <div class="graph"><div class="graph-title">Left Temp (Full)</div><canvas id="leftTempFullGraph" width="280" height="90"></canvas></div>
+      <div class="graph"><div class="graph-title">Right Temp (Full)</div><canvas id="rightTempFullGraph" width="280" height="90"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Heavily optimized physics with spatial grid and force approximation
+
+// ---------- Config & state ----------
+const config = {
+  particleCount: 10000,
+  leftTemp: 5000,
+  rightTemp: 50,
+  radius: 2,
+  pipeHeight: 1,
+  substeps: 2,
+  tunneling: 2500,
+  useSAP: true,
+  pipeOpen: false,
+  width: 1000,
+  height: 1000,
+  gravity: false,
+  friction: false,
+  drag: false,
+  pressure: false,
+  maxwellDemon: false,
+  demonSpeedThreshold: 10,
+  uncapFps: false,
+  gravityStrength: 100,
+  gravityExponent: 2.0,
+  frictionCoeff: 0.98,
+  dragCoeff: 0.015,
+  pressureStrength: 150,
+  forceSampling: 0.1
+};
+
+let canvas = document.getElementById('canvas');
+let gl = null;
+let program = null;
+let positionBuffer, colorBuffer, radiusBuffer;
+let isRunning = true;
+let lastRAF = performance.now();
+let fpsSmooth = 60;
+
+// Graph/History
+const maxFullHistory = 2000;
+const recentPoints = 120;
+let leftFull = [];
+let rightFull = [];
+let leftRecent = [];
+let rightRecent = [];
+
+// Stats
+const stats = { fps:0, collisionRate:0, collisionChecks:0, leftBoxTemp:0, rightBoxTemp:0, totalParticles:0 };
+
+// FPS targeting variables
+let targetFps = 60;
+
+// ---------- Graph reset function ----------
+function resetGraphs() {
+  leftFull = [];
+  rightFull = [];
+  leftRecent = [];
+  rightRecent = [];
+  
+  // Clear all graph canvases
+  const graphIds = ['leftTempRecentGraph', 'rightTempRecentGraph', 'leftTempFullGraph', 'rightTempFullGraph'];
+  graphIds.forEach(id => {
+    const canvas = document.getElementById(id);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+}
+
+// ---------- Utilities ----------
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function hslToRgb(h,s,l){ // h in [0,1]
+  let r,g,b;
+  if(s==0) r=g=b=l; else{
+    const q = l<0.5?l*(1+s):l+s-l*s; const p = 2*l-q;
+    const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3-t)*6; return p };
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return [r,g,b];
+}
+
+// ---------- WebGL setup ----------
+function initWebGL(){
+  gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if(!gl){ document.getElementById('loading').textContent = 'WebGL unavailable – falling back to 2D render.'; return false; }
+
+  // shaders
+  const vsrc = `#version 300 es
+    in vec2 a_position; in vec3 a_color; in float a_radius;
+    uniform vec2 u_resolution; uniform float u_pixelRatio;
+    out vec3 v_color; out float v_radius;
+    void main(){ vec2 pos = ((a_position / u_resolution) * 2.0 - 1.0) * vec2(1.0, -1.0);
+      gl_Position = vec4(pos,0,1); 
+	  gl_PointSize = a_radius * 1.0 * u_pixelRatio; 
+	  v_color = a_color; 
+	  v_radius = a_radius * u_pixelRatio; }
+  `;
+  const fsrc = `#version 300 es
+    precision mediump float; in vec3 v_color; in float v_radius; out vec4 outColor;
+    void main(){ vec2 c = gl_PointCoord - vec2(0.5); float d = length(c);
+      if(d>0.5) discard; 
+	  float alpha = 1.0 - smoothstep(0.3,0.5,d);
+      outColor = vec4(v_color, alpha);
+    }
+  `;
+  const vs = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs,vsrc); gl.compileShader(vs);
+  const fs = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs,fsrc); gl.compileShader(fs);
+  program = gl.createProgram(); gl.attachShader(program,vs); gl.attachShader(program,fs); gl.linkProgram(program);
+  positionBuffer = gl.createBuffer(); colorBuffer = gl.createBuffer(); radiusBuffer = gl.createBuffer();
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,1);
+  return true;
+}
+
+function resize(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width * devicePixelRatio);
+  canvas.height = Math.floor(rect.height * devicePixelRatio);
+  canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+  config.width = canvas.width; config.height = canvas.height;
+  if(gl) gl.viewport(0,0,canvas.width,canvas.height);
+}
+window.addEventListener('resize',()=>{ resize(); });
+resize();
+initWebGL();
+
+// ---------- Optimized Physics Module ----------
+let PhysicsModule = (function(){
+  const Module = { ready:false, particles:null, particleCount:0 };
+  
+  // Spatial grid for force calculations
+  let spatialGrid = null;
+  let gridCellSize = 20;
+  let gridWidth = 0;
+  let gridHeight = 0;
+
+  // Force sampling variables - persistent across calls for better distribution
+  let forceUpdateOffset = 0;
+
+  function initSpatialGrid(width, height) {
+    gridWidth = Math.ceil(width / gridCellSize);
+    gridHeight = Math.ceil(height / gridCellSize);
+    spatialGrid = new Array(gridWidth * gridHeight);
+    for(let i = 0; i < spatialGrid.length; i++) {
+      spatialGrid[i] = [];
+    }
+  }
+
+  // Teleportation functions for Maxwell's Demon
+  function teleportSlowParticle(p, n, cx, thresholdSq, direction) {
+    // Find a random slow particle on the specified side and teleport it
+    const candidates = [];
+    for(let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const px = p[idx];
+      const speedSq = p[idx+2]*p[idx+2] + p[idx+3]*p[idx+3];
+      
+      if(direction === 'rightToLeft' && px > cx && speedSq < thresholdSq) {
+        candidates.push(idx);
+      }
+    }
+    
+    if(candidates.length > 0) {
+      const chosenIdx = candidates[Math.floor(Math.random() * candidates.length)];
+      // Teleport to left side
+      p[chosenIdx] = Math.random() * (cx - 20) + 10;
+      p[chosenIdx + 1] = Math.random() * (config.height - 20) + 10;
+    }
+  }
+  
+  function teleportFastParticle(p, n, cx, thresholdSq, direction) {
+    // Find a random fast particle on the specified side and teleport it
+    const candidates = [];
+    for(let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const px = p[idx];
+      const speedSq = p[idx+2]*p[idx+2] + p[idx+3]*p[idx+3];
+      
+      if(direction === 'leftToRight' && px < cx && speedSq >= thresholdSq) {
+        candidates.push(idx);
+      }
+    }
+    
+    if(candidates.length > 0) {
+      const chosenIdx = candidates[Math.floor(Math.random() * candidates.length)];
+      // Teleport to right side  
+      p[chosenIdx] = Math.random() * (config.width - cx - 20) + cx + 10;
+      p[chosenIdx + 1] = Math.random() * (config.height - 20) + 10;
+    }
+  }
+
+  function clearSpatialGrid() {
+    for(let i = 0; i < spatialGrid.length; i++) {
+      spatialGrid[i].length = 0;
+    }
+  }
+
+  function addToSpatialGrid(particleIndex, x, y) {
+    const gx = Math.floor(x / gridCellSize);
+    const gy = Math.floor(y / gridCellSize);
+    if(gx >= 0 && gx < gridWidth && gy >= 0 && gy < gridHeight) {
+      spatialGrid[gy * gridWidth + gx].push(particleIndex);
+    }
+  }
+
+  function init(count){
+    Module.particleCount = count; 
+    Module.particles = new Float32Array(count * 8);
+    const w = config.width, h = config.height, cx = w/2, margin = config.radius + 1;
+    
+    initSpatialGrid(w, h);
+    
+    for(let i=0;i<count;i++){ 
+      const idx=i*8; 
+      const left = (i%2===0);
+      const bxMin = left? margin : cx+margin; 
+      const bxMax = left? cx-margin : w-margin;
+      Module.particles[idx] = Math.random()*(bxMax-bxMin)+bxMin; 
+      Module.particles[idx+1] = Math.random()*(h-2*margin)+margin;
+      const speed = (left?config.leftTemp:config.rightTemp) * (Math.random()*0.6+0.7)/50; 
+      const ang=Math.random()*Math.PI*2;
+      Module.particles[idx+2]=Math.cos(ang)*speed; 
+      Module.particles[idx+3]=Math.sin(ang)*speed;
+      Module.particles[idx+4]=0; 
+      Module.particles[idx+5]=0; 
+      Module.particles[idx+6]=0; 
+      Module.particles[idx+7]=config.radius;
+    }
+    updateColors(); 
+    Module.ready=true; 
+    return Module;
+  }
+
+  function update(cfg){ 
+    if(!Module.ready) return; 
+    const dt = 1/60/cfg.substeps; 
+    for(let s=0;s<cfg.substeps;s++){ 
+      applyForces(dt,cfg); 
+      updatePositions(dt,cfg); 
+      handleCollisions(cfg); 
+    } 
+    updateColors(); 
+  }
+
+  function applyForces(dt, cfg) {
+    const p = Module.particles;
+    const n = Module.particleCount;
+    const EPS = 1e-8;
+
+    // rebuild grid only if needed
+    if (cfg.gravity || cfg.pressure) {
+      clearSpatialGrid();
+      for (let i = 0; i < n; i++) {
+        const idx = i * 8;
+        const x = p[idx], y = p[idx + 1];
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue; // skip corrupted particles
+        addToSpatialGrid(i, x, y);
+      }
+    }
+
+    // Determine force sampling fraction - use manual control if set, otherwise auto-scale
+    let forceFraction = cfg.forceSampling;
+    if (forceFraction >= 1.0) {
+      // Auto-scaling when set to 100%
+      if (n > 50000) forceFraction = 0.02;      // 1/50th for very high counts
+      else if (n > 20000) forceFraction = 0.025; // 1/40th for high counts  
+      else if (n > 10000) forceFraction = 0.05;  // 1/20 for medium counts
+    }
+
+    const forceParticleCount = Math.max(1, Math.floor(n * forceFraction));
+    const forceStep = Math.max(1, Math.floor(n / forceParticleCount));
+    const invFraction = 1 / forceFraction;
+    const exponent = cfg.gravityExponent;
+    const softening = 25; // prevents singularity at r=0
+	
+    // Rotate the starting offset to ensure all particles get updated eventually
+    forceUpdateOffset = (forceUpdateOffset + 1) % forceStep;
+
+    for (let i = 0; i < n; i++) {
+      const idx = i * 8;
+      let fx = 0, fy = 0;
+
+      // --- speed limit / drag (always applied - these are cheap) ---
+      const vx0 = p[idx + 2], vy0 = p[idx + 3];
+      const speed2 = vx0 * vx0 + vy0 * vy0;
+      const maxSpeed2 = cfg.tunneling * cfg.tunneling;
+
+      if (speed2 > maxSpeed2) {
+        const scale = cfg.tunneling / Math.sqrt(speed2);
+        p[idx + 2] *= scale;
+        p[idx + 3] *= scale;
+      }
+
+      if (cfg.drag && speed2 > 1e-6) {
+        const speed = Math.sqrt(speed2);
+        const dragMag = cfg.dragCoeff * speed2;
+        fx -= (p[idx + 2] / speed) * dragMag;
+        fy -= (p[idx + 3] / speed) * dragMag;
+      }
+
+      // --- gravity / pressure using sampling (expensive forces only on subset) ---
+      const shouldCalculateExpensiveForces = (cfg.gravity || cfg.pressure) && 
+                                            ((i + forceUpdateOffset) % forceStep === 0);
+      
+      if (shouldCalculateExpensiveForces) {
+        const x = p[idx], y = p[idx + 1];
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          // don't let NaNs propagate forces
+          // (positions will be healed by wall constraints in updatePositions)
+          p[idx + 2] = 0; p[idx + 3] = 0;
+        } else {
+          const gx = Math.floor(x / gridCellSize);
+          const gy = Math.floor(y / gridCellSize);
+          if (Number.isFinite(gx) && Number.isFinite(gy)) { // guard NaN indices
+            const gravityRange = cfg.gravity ? 1 : 0;
+            const pressureRange = cfg.pressure ? 1 : 0;
+            const maxRange = Math.max(gravityRange, pressureRange);
+			let gravForce = 0;
+            for (let dx = -maxRange; dx <= maxRange; dx++) {
+              for (let dy = -maxRange; dy <= maxRange; dy++) {
+                const cellX = gx + dx;
+                const cellY = gy + dy;
+                if (cellX < 0 || cellX >= gridWidth || cellY < 0 || cellY >= gridHeight) continue;
+
+                const cell = spatialGrid[cellY * gridWidth + cellX];
+                if (!cell) continue; // cell can be undefined if grid got out of sync
+
+                const cellDist2 = dx * dx + dy * dy;
+				
+                for (let k = 0; k < cell.length; k++) {
+                  const j = cell[k];
+                  if (i === j) continue;
+
+                  const jdx = j * 8;
+                  const dxp = p[jdx] - x;
+                  const dyp = p[jdx + 1] - y;
+                  const dist2 = dxp * dxp + dyp * dyp;
+
+                  if(dist2 < 1) continue; // avoid singularity
+                  				
+                  // unit normal without creating NaNs
+                  const invDist = 1 / Math.sqrt(dist2);
+                  const nx = dxp * invDist;
+                  const ny = dyp * invDist;
+
+                  // Gravity (attractive) - compensate for sampling by scaling force
+                  if (cfg.gravity && cellDist2 <= gravityRange * gravityRange) {
+                    if (exponent == 2) {
+                      gravForce = (cfg.gravityStrength * invFraction) / dist2;
+					}else{
+					  const softenedDist2 = dist2 + softening*softening;
+                      const distPow = Math.pow(softenedDist2, exponent / 2);
+					  gravForce = (cfg.gravityStrength * invFraction) / distPow;
+	                }
+                    fx += nx * gravForce;
+                    fy += ny * gravForce;
+                  }
+
+                  // Pressure (repulsive, short range) - compensate for sampling by scaling force
+                  if (cfg.pressure && cellDist2 <= pressureRange * pressureRange) {
+                    const maxPressDist = p[idx + 7] * 8;
+                    // use dist via invDist without another sqrt
+                    const dist = 1 / invDist;
+                    if (dist < maxPressDist) {
+                      const pressForce = (cfg.pressureStrength * invDist * invFraction * 0.6);
+                      fx -= nx * pressForce;
+                      fy -= ny * pressForce;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Final force application with sanity check
+      if (!Number.isFinite(fx)) fx = 0;
+      if (!Number.isFinite(fy)) fy = 0;
+      p[idx + 2] += fx * dt;
+      p[idx + 3] += fy * dt;
+    }
+  }
+
+
+// Real-time temperature updates
+  function updateParticleTemperatures(leftTemp, rightTemp) {
+    if (!Module.ready) return;
+    const p = Module.particles;
+    const n = Module.particleCount;
+    const cx = config.width / 2;
+    
+    // Update velocities based on new temperatures
+    for (let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const x = p[idx];
+      const isLeft = x < cx;
+      
+      // Get current speed
+      const currentSpeed = Math.sqrt(p[idx + 2] * p[idx + 2] + p[idx + 3] * p[idx + 3]);
+      
+      // Calculate target speed from temperature
+      const targetTemp = isLeft ? leftTemp : rightTemp;
+      const targetSpeed = targetTemp * (Math.random() * 0.6 + 0.7) / 50;
+      
+      // Smoothly adjust towards target speed (works for both increasing AND decreasing)
+      if (currentSpeed > 0.1) {
+        const speedRatio = targetSpeed / currentSpeed;
+        const adjustmentFactor = 0.2; // Increased for faster response to decreases
+        const newSpeedRatio = 1 + (speedRatio - 1) * adjustmentFactor;
+        
+        p[idx + 2] *= newSpeedRatio;
+        p[idx + 3] *= newSpeedRatio;
+      } else {
+        // If particle is nearly stationary, give it some random motion
+        const ang = Math.random() * Math.PI * 2;
+        p[idx + 2] = Math.cos(ang) * targetSpeed;
+        p[idx + 3] = Math.sin(ang) * targetSpeed;
+      }
+    }
+  }
+
+  function updatePositions(dt, cfg) {
+    const p = Module.particles;
+    const n = Module.particleCount;
+    const w = cfg.width, h = cfg.height;
+    const cx = w / 2;
+    const pipeTop = h / 2 - (cfg.pipeHeight / 100) * h / 2;
+    const pipeBottom = h / 2 + (cfg.pipeHeight / 100) * h / 2;
+    const wallT = 10;
+
+    const demonThresholdSq = cfg.demonSpeedThreshold * cfg.demonSpeedThreshold;
+    
+    for (let i = 0; i < n; i++) {
+        const idx = i * 8;
+        let x = p[idx], y = p[idx + 1];
+        let vx = p[idx + 2], vy = p[idx + 3];
+        const r = p[idx + 7]/2; //wall collision radius
+
+        // Update position
+        x += vx * dt;
+        y += vy * dt;
+
+        // Boundary collisions with restitution
+        const restitution = 1; // energy loss on wall collision
+        if (x - r < 0) { x = r; vx = Math.abs(vx) * restitution; }
+        if (x + r > w) { x = w - r; vx = -Math.abs(vx) * restitution; }
+        if (y - r < 0) { y = r; vy = Math.abs(vy) * restitution; }
+        if (y + r > h) { y = h - r; vy = -Math.abs(vy) * restitution; }
+
+        // Center wall collision handling with Maxwell's Demon
+        const leftWallEdge = cx - wallT/2;
+        const rightWallEdge = cx + wallT/2;
+        
+        // Check if particle is crossing the center wall
+        const isCrossingWall = (x > leftWallEdge && x < rightWallEdge) || 
+                              (x + r > leftWallEdge && x < leftWallEdge) || 
+                              (x - r < rightWallEdge && x > rightWallEdge);
+        
+        if (isCrossingWall) {
+            const withinPipe = cfg.pipeOpen && (y >= pipeTop && y <= pipeBottom);
+            let shouldBounce = false;
+            
+            if (cfg.maxwellDemon) {
+                // Maxwell's Demon is active - works regardless of pipe state
+                const speedSq = vx*vx + vy*vy;
+                const isMovingRight = vx > 0;
+                const isFastParticle = speedSq >= demonThresholdSq;
+                
+                if (isMovingRight && isFastParticle) {
+                    // Fast particle moving left->right: ALLOW and teleport a slow particle
+                    // Find a slow particle on the right side to teleport left
+                    teleportSlowParticle(p, n, cx, demonThresholdSq, 'rightToLeft');
+                } else if (!isMovingRight && !isFastParticle) {
+                    // Slow particle moving right->left: ALLOW and teleport a fast particle  
+                    // Find a fast particle on the left side to teleport right
+                    teleportFastParticle(p, n, cx, demonThresholdSq, 'leftToRight');
+                } else {
+                    // Other combinations: BOUNCE
+                    shouldBounce = true;
+                }
+            } else if (!withinPipe) {
+                // No demon and outside pipe opening: BOUNCE
+                shouldBounce = true;
+            }
+            // If demon is off and within pipe: pass through freely
+            
+            if (shouldBounce) {
+                if (x > leftWallEdge && x < rightWallEdge) {
+                    const distToLeft = x - leftWallEdge;
+                    const distToRight = rightWallEdge - x;
+                    if (distToLeft < distToRight) {
+                        x = leftWallEdge - r;
+                        vx = -Math.abs(vx) * restitution;
+                    } else {
+                        x = rightWallEdge + r;
+                        vx = Math.abs(vx) * restitution;
+                    }
+                } else if (x + r > leftWallEdge && x < leftWallEdge) {
+                    x = leftWallEdge - r;
+                    vx = -Math.abs(vx) * restitution;
+                } else if (x - r < rightWallEdge && x > rightWallEdge) {
+                    x = rightWallEdge + r;
+                    vx = Math.abs(vx) * restitution;
+                }
+            }
+        }
+
+        p[idx] = x; p[idx + 1] = y;
+        p[idx + 2] = vx; p[idx + 3] = vy;
+    }
+  }
+
+  // Optimized collision detection with early termination
+  const CollisionStats = { collisions:0, checks:0 };
+  function handleCollisions(cfg){
+    const p = Module.particles; 
+    const n = Module.particleCount; 
+    CollisionStats.collisions = 0; 
+    CollisionStats.checks = 0;
+    
+    
+    if(cfg.useSAP){
+      // Pre-allocate sorted indices array
+      const idxs = new Uint32Array(n);
+      for(let i=0;i<n;i++) idxs[i]=i;
+      
+      // Use faster sorting for float32 positions
+      const positions = new Float32Array(n);
+      for(let i=0;i<n;i++) positions[i] = p[i*8];
+      
+      // Sort indices by x position
+      idxs.sort((a,b) => positions[a] - positions[b]);
+      
+      for(let i=0;i<n;i++){
+        const a = idxs[i]*8;
+        const ax = p[a], ay = p[a+1], ar = p[a+7];
+        
+        // Early termination optimization
+        let collisionCount = 0;
+        const maxCollisionsPerParticle = 8; // limit collisions per particle
+        
+        for(let j=i+1;j<n && collisionCount < maxCollisionsPerParticle;j++){
+          const b = idxs[j]*8;
+          const bx = p[b];
+          if(bx - p[b+7] > ax + ar) break; // SAP early exit
+          
+          CollisionStats.checks++;
+          const dx = bx - ax;
+          const dy = p[b+1] - ay;
+          const dist2 = dx*dx + dy*dy; // avoid sqrt
+          const minD = (ar + p[b+7])/2;
+          const minD2 = minD * minD;
+          
+          if(dist2 < minD2 && dist2 > 0.01){ // avoid division by zero
+            CollisionStats.collisions++;
+            collisionCount++;
+            
+            const dist = Math.sqrt(dist2);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            
+            // Optimized elastic collision
+            const m1 = 1, m2 = 1; // equal masses
+            const v1x = p[a+2], v1y = p[a+3];
+            const v2x = p[b+2], v2y = p[b+3];
+            
+            const kx = v1x - v2x;
+            const ky = v1y - v2y;
+            const momentum = (nx * kx + ny * ky); // simplified for equal masses
+            
+            if(cfg.friction) {
+              const f = cfg.frictionCoeff;
+              p[a+2] = (v1x - momentum * nx) * f;
+              p[a+3] = (v1y - momentum * ny) * f;
+              p[b+2] = (v2x + momentum * nx) * f;
+              p[b+3] = (v2y + momentum * ny) * f;
+            } else {
+              p[a+2] = v1x - momentum * nx;
+              p[a+3] = v1y - momentum * ny;
+              p[b+2] = v2x + momentum * nx;
+              p[b+3] = v2y + momentum * ny;
+            }
+            
+            // Optimized separation
+            const overlap = minD - dist;
+            const sep = Math.min(overlap * 0.6, minD * 0.2);
+            p[a] -= nx * sep;
+            p[a+1] -= ny * sep;
+            p[b] += nx * sep;
+            p[b+1] += ny * sep;
+          }
+        }
+      }
+    } else {
+      // Optimized grid collision detection
+      const cell = Math.max(8, cfg.radius*3); // smaller cells for better distribution
+      const gw = Math.ceil(cfg.width/cell);
+      const gh = Math.ceil(cfg.height/cell);
+      const grid = new Array(gw*gh);
+      
+      for(let i=0;i<grid.length;i++) grid[i] = [];
+      
+      // Build grid
+      for(let i=0;i<n;i++){
+        const idx=i*8;
+        const gx=Math.floor(p[idx]/cell);
+        const gy=Math.floor(p[idx+1]/cell);
+        if(gx>=0&&gx<gw&&gy>=0&&gy<gh) grid[gy*gw+gx].push(i);
+      }
+      
+      // Check collisions within cells
+      for(let g=0;g<grid.length;g++){
+        const cellArr=grid[g];
+        const cellSize = cellArr.length;
+        
+        // Skip very dense cells for performance
+        if(cellSize > 100) continue;
+        
+        for(let a=0;a<cellSize;a++){
+          for(let b=a+1;b<cellSize;b++){
+            const ai=cellArr[a]*8, bi=cellArr[b]*8;
+            CollisionStats.checks++;
+            
+            const dx=p[bi]-p[ai];
+            const dy=p[bi+1]-p[ai+1];
+            const dist2=dx*dx+dy*dy;
+            const minD=(p[ai+7]+p[bi+7])/2; //half radius
+            const minD2 = minD*minD;
+            
+            if(dist2<minD2 && dist2>0.01){
+              CollisionStats.collisions++;
+              const dist = Math.sqrt(dist2);
+              const nx = dx / dist;
+              const ny = dy / dist;
+              
+              // Optimized elastic collision
+              const m1 = 1, m2 = 1;
+              const v1x = p[ai+2], v1y = p[ai+3];
+              const v2x = p[bi+2], v2y = p[bi+3];
+              
+              const kx = v1x - v2x;
+              const ky = v1y - v2y;
+              const momentum = (nx * kx + ny * ky);
+              
+              if(cfg.friction) {
+                const f = cfg.frictionCoeff;
+                p[ai+2] = (v1x - momentum * nx) * f;
+                p[ai+3] = (v1y - momentum * ny) * f;
+                p[bi+2] = (v2x + momentum * nx) * f;
+                p[bi+3] = (v2y + momentum * ny) * f;
+              } else {
+                p[ai+2] = v1x - momentum * nx;
+                p[ai+3] = v1y - momentum * ny;
+                p[bi+2] = v2x + momentum * nx;
+                p[bi+3] = v2y + momentum * ny;
+              }
+              
+              // Optimized separation
+              const overlap = minD - dist;
+              const sep = Math.min(overlap * 0.6, minD * 0.2);
+              p[ai] -= nx * sep;
+              p[ai+1] -= ny * sep;
+              p[bi] += nx * sep;
+              p[bi+1] += ny * sep;
+            }
+          }
+        }
+      }
+    }
+    Module.collisionStats = { collisions: CollisionStats.collisions, checks: CollisionStats.checks };
+  }
+
+  // Optimized color update with caching
+  let lastColorUpdate = 0;
+  function updateColors(){ 
+    // Update colors less frequently for better performance
+    const now = performance.now();
+    if(now - lastColorUpdate < 20) return; // Update colors at most every 50ms
+    lastColorUpdate = now;
+    
+    const p=Module.particles, n=Module.particleCount; 
+    for(let i=0;i<n;i++){ 
+      const idx=i*8; 
+      const speed2 = p[idx+2]*p[idx+2] + p[idx+3]*p[idx+3];
+      const speed = Math.sqrt(speed2);
+      const hue = 240-Math.min(speed*6,240); 
+      const rgb=hslToRgb(hue/360,1,0.5); 
+      p[idx+4]=rgb[0]; 
+      p[idx+5]=rgb[1]; 
+      p[idx+6]=rgb[2]; 
+    }
+  }
+
+  return { 
+    init, 
+    update, 
+    updateParticleTemperatures,
+    get particles(){return Module.particles;}, 
+    get particleCount(){return Module.particleCount;}, 
+    get collisionStats(){return Module.collisionStats||{collisions:0,checks:0}}, 
+    ready:()=>Module.ready 
+  };
+})();
+
+// ---------- Optimized Rendering ----------
+function renderParticlesToWebGL(particles, count){ 
+  if(!gl){ 
+    // Optimized 2D fallback - batch operations
+    const ctx = canvas.getContext('2d'); 
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    
+    // Use ImageData for better performance with many particles
+    if(count > 20000) {
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      for(let i=0;i<count;i++){
+        const idx=i*8;
+        const x = Math.floor(particles[idx]);
+        const y = Math.floor(particles[idx+1]);
+        const r = Math.floor(particles[idx+7]);
+        
+        if(x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+          const pixelIdx = (y * canvas.width + x) * 4;
+          if(pixelIdx < data.length) {
+            data[pixelIdx] = particles[idx+4] * 255;     // R
+            data[pixelIdx+1] = particles[idx+5] * 255;   // G
+            data[pixelIdx+2] = particles[idx+6] * 255;   // B
+            data[pixelIdx+3] = 255;                      // A
+          }
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+    } else {
+      // Regular canvas drawing for smaller counts
+      ctx.globalCompositeOperation = 'lighter'; // additive blending for glow effect
+      for(let i=0;i<count;i++){ 
+        const idx=i*8; 
+        const x=particles[idx], y=particles[idx+1], r=particles[idx+7]; 
+        const rgb=[particles[idx+4]*255,particles[idx+5]*255,particles[idx+6]*255]; 
+        ctx.fillStyle = `rgb(${rgb[0]|0},${rgb[1]|0},${rgb[2]|0})`; 
+        ctx.beginPath(); 
+        ctx.arc(x,y,r,0,Math.PI*2); 
+        ctx.fill(); 
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    return; 
+  }
+
+  // Optimized WebGL upload - reuse buffers when possible
+  const pos = new Float32Array(count*2); 
+  const cols = new Float32Array(count*3); 
+  const rads = new Float32Array(count);
+  
+  // Batch copy data
+  for(let i=0;i<count;i++){ 
+    const idx=i*8; 
+    const i2 = i*2, i3 = i*3;
+    pos[i2]=particles[idx]; 
+    pos[i2+1]=particles[idx+1]; 
+    cols[i3]=particles[idx+4]; 
+    cols[i3+1]=particles[idx+5]; 
+    cols[i3+2]=particles[idx+6]; 
+    rads[i]=particles[idx+7]; 
+  }
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(program);
+  
+  const posLoc = gl.getAttribLocation(program,'a_position'); 
+  const colLoc = gl.getAttribLocation(program,'a_color'); 
+  const radLoc = gl.getAttribLocation(program,'a_radius');
+  const resLoc = gl.getUniformLocation(program,'u_resolution'); 
+  const prLoc = gl.getUniformLocation(program,'u_pixelRatio');
+
+  // Upload buffers efficiently
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); 
+  gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STREAM_DRAW); // STREAM_DRAW for dynamic data
+  gl.enableVertexAttribArray(posLoc); 
+  gl.vertexAttribPointer(posLoc,2,gl.FLOAT,false,0,0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer); 
+  gl.bufferData(gl.ARRAY_BUFFER, cols, gl.STREAM_DRAW);
+  gl.enableVertexAttribArray(colLoc); 
+  gl.vertexAttribPointer(colLoc,3,gl.FLOAT,false,0,0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, radiusBuffer); 
+  gl.bufferData(gl.ARRAY_BUFFER, rads, gl.STREAM_DRAW);
+  gl.enableVertexAttribArray(radLoc); 
+  gl.vertexAttribPointer(radLoc,1,gl.FLOAT,false,0,0);
+
+  gl.uniform2f(resLoc, config.width, config.height); 
+  gl.uniform1f(prLoc, devicePixelRatio || 1);
+  gl.drawArrays(gl.POINTS, 0, count);
+}
+
+// ---------- UI helpers & graphs ----------
+function pushHistory(l, r){ 
+  leftRecent.push(l); 
+  rightRecent.push(r); 
+  leftFull.push(l); 
+  rightFull.push(r); 
+  if(leftRecent.length>recentPoints) leftRecent.shift(); 
+  if(rightRecent.length>recentPoints) rightRecent.shift(); 
+  if(leftFull.length>maxFullHistory) leftFull.shift(); 
+  if(rightFull.length>maxFullHistory) rightFull.shift(); 
+}
+
+function drawMiniGraph(canvasEl, data, autoScale=true){ 
+  const ctx = canvasEl.getContext('2d'); 
+  const W=canvasEl.width, H=canvasEl.height; 
+  ctx.clearRect(0,0,W,H); 
+  if(data.length<2) return; 
+  let min=Math.min(...data), max=Math.max(...data); 
+  if(!autoScale){ min=0; } 
+  const pad=6; 
+  const plotH=H-2*pad; 
+  const plotW=W-2*pad; 
+  const range = (max-min)||1; 
+  ctx.beginPath(); 
+  for(let i=0;i<data.length;i++){ 
+    const x = pad + (i/(data.length-1))*plotW; 
+    const y = pad + (1 - (data[i]-min)/range)*plotH; 
+    if(i===0) ctx.moveTo(x,y); 
+    else ctx.lineTo(x,y); 
+  } 
+  ctx.strokeStyle='rgba(0,255,136,0.9)'; 
+  ctx.lineWidth=1.5; 
+  ctx.stroke(); 
+}
+
+function updateStatsDOM(){ 
+  document.getElementById('fps').textContent = Math.round(stats.fps); 
+  document.getElementById('targetFps').textContent = config.uncapFps ? Math.round(targetFps) : '60';
+  document.getElementById('collisionRate').textContent=Math.round(stats.collisionRate); 
+  document.getElementById('collisionChecks').textContent=Math.round(stats.collisionChecks); 
+  document.getElementById('leftBoxTemp').textContent=stats.leftBoxTemp.toFixed(2); 
+  document.getElementById('rightBoxTemp').textContent=stats.rightBoxTemp.toFixed(2); 
+  
+  // Update graphs less frequently for better performance
+  if(Math.random() < 1) { // Update graphs only 100% of the time lol
+    drawMiniGraph(document.getElementById('leftTempRecentGraph'), leftRecent, true); 
+    drawMiniGraph(document.getElementById('rightTempRecentGraph'), rightRecent, true); 
+    drawMiniGraph(document.getElementById('leftTempFullGraph'), leftFull, false); 
+    drawMiniGraph(document.getElementById('rightTempFullGraph'), rightFull, false);
+  }
+}
+
+// ---------- Optimized main loop with TRUE FPS uncapping ----------
+let frameCount = 0;
+let physicsLoopId = null; // To hold the reference to our setInterval
+let adaptiveFpsIntervalId = null; // To hold the adaptive FPS adjuster
+
+// The NEW physics-only loop
+function physicsLoop() {
+  if (!isRunning) return; // Don't run physics if paused
+  // Always run one step of the physics simulation
+  PhysicsModule.update(config);
+
+  // This logic is now part of the physics loop
+  const particles = PhysicsModule.particles;
+  const count = PhysicsModule.particleCount;
+
+  // Compute temps and stats less frequently for better performance
+  if (frameCount % 3 === 0) {
+    let leftSum = 0, leftCount = 0, rightSum = 0, rightCount = 0;
+    const cx = config.width / 2;
+
+    for (let i = 0; i < count; i++) {
+      const idx = i * 8;
+      const sp2 = particles[idx + 2] * particles[idx + 2] + particles[idx + 3] * particles[idx + 3];
+      if (particles[idx] < cx) {
+        leftSum += sp2;
+        leftCount++;
+      } else {
+        rightSum += sp2;
+        rightCount++;
+      }
+    }
+
+    stats.leftBoxTemp = leftCount ? Math.sqrt(leftSum / leftCount) : 0;
+    stats.rightBoxTemp = rightCount ? Math.sqrt(rightSum / rightCount) : 0;
+    pushHistory(stats.leftBoxTemp, stats.rightBoxTemp);
+  }
+
+  stats.collisionChecks = PhysicsModule.collisionStats ? PhysicsModule.collisionStats.checks : 0;
+  stats.collisionRate = PhysicsModule.collisionStats ? PhysicsModule.collisionStats.collisions : 0;
+  stats.totalParticles = count;
+}
+
+
+// The MODIFIED main loop is now for rendering ONLY
+function mainLoop(ts) {
+  // We still request a new frame to keep the rendering loop going
+  requestAnimationFrame(mainLoop);
+
+  // But we respect the pause button for rendering
+  if (!isRunning) {
+    lastRAF = ts;
+    return;
+  }
+
+  const dt = (ts - lastRAF) / 1000;
+  lastRAF = ts;
+  
+  // Avoid massive dt values if the tab was inactive
+  if (dt > 0.1) return; 
+
+  const currentFps = 1 / dt;
+  fpsSmooth = fpsSmooth * 0.95 + currentFps * 0.05;
+  stats.fps = fpsSmooth;
+
+  // --- Physics update is REMOVED from here ---
+
+  // Render the latest state of the particles
+  renderParticlesToWebGL(PhysicsModule.particles, PhysicsModule.particleCount);
+
+  // Update UI less frequently
+  if (frameCount % 5 === 0) {
+    updateStatsDOM();
+  }
+
+  frameCount++;
+}
+
+
+// ---------- UI wiring ----------
+function wireUI(){ 
+  const set=(id,cb,fmt)=>{ 
+    const el=document.getElementById(id); 
+    const lab=document.getElementById(id+'Value'); 
+    const upd=()=>lab.textContent=fmt?fmt(el.value):el.value; 
+    el.addEventListener('input',()=>{ cb(el.value); upd(); }); 
+    upd(); 
+  };
+  
+  set('particleCount', v=>{ 
+    config.particleCount=Number(v); 
+    document.getElementById('totalParticles').textContent=v; 
+  }, v=>v);
+  
+  // Real-time temperature updates
+  set('leftTemp', v=> {
+    config.leftTemp=Number(v);
+    PhysicsModule.updateParticleTemperatures(config.leftTemp, config.rightTemp);
+  }, v=>v);
+  set('rightTemp', v=> {
+    config.rightTemp=Number(v);
+    PhysicsModule.updateParticleTemperatures(config.leftTemp, config.rightTemp);
+  }, v=>v);
+  
+  set('radius', v=> { 
+    config.radius=Number(v); 
+    if(PhysicsModule.particles) {
+      const newRadius = config.radius;
+      for(let i=0;i<PhysicsModule.particleCount;i++) {
+        PhysicsModule.particles[i*8+7]=newRadius;
+      }
+    }
+  }, v=>v+'px');
+  set('pipeHeight', v=> config.pipeHeight=Number(v), v=>v+'%');
+  set('substeps', v=> config.substeps=Math.max(1,Number(v)), v=>v);
+  set('tunneling', v=> config.tunneling=Number(v), v=>v);
+  set('demonThreshold', v=> config.demonSpeedThreshold=Number(v), v=>v);
+  set('forceSampling', v=> config.forceSampling=Number(v), v=>(Number(v)>=1.0?'Auto':Math.round(v*100)+'%'));
+  set('pressureStrength', v=> config.pressureStrength=Number(v), v=>v);
+  set('dragCoeff', v=> config.dragCoeff=Number(v), v=>Number(v).toFixed(4));
+  
+  // Gravity controls
+  set('gravityStrength', v=> config.gravityStrength=Number(v), v=>v);
+  set('gravityExponent', v=> config.gravityExponent=Number(v), v=>Number(v).toFixed(1));
+  
+  document.getElementById('collisionMode').addEventListener('change', (e)=>{ 
+    config.useSAP = e.target.checked; 
+    document.getElementById('collisionModeLabel').textContent = config.useSAP?'SAP':'Grid'; 
+  });
+  
+  document.getElementById('gravityToggle').addEventListener('change', (e)=>{ 
+    config.gravity = e.target.checked; 
+    document.getElementById('gravityLabel').textContent = config.gravity?'On':'Off'; 
+  });
+  document.getElementById('frictionToggle').addEventListener('change', (e)=>{ 
+    config.friction = e.target.checked; 
+    document.getElementById('frictionLabel').textContent = config.friction?'On':'Off'; 
+  });
+  document.getElementById('dragToggle').addEventListener('change', (e)=>{ 
+    config.drag = e.target.checked; 
+    document.getElementById('dragLabel').textContent = config.drag?'On':'Off'; 
+  });
+  document.getElementById('pressureToggle').addEventListener('change', (e)=>{ 
+    config.pressure = e.target.checked; 
+    document.getElementById('pressureLabel').textContent = config.pressure?'On':'Off'; 
+  });
+  
+  document.getElementById('maxwellToggle').addEventListener('change', (e)=>{
+    config.maxwellDemon = e.target.checked;
+    document.getElementById('maxwellLabel').textContent = config.maxwellDemon ? 'On' : 'Off';
+  });
+  
+  // MODIFIED Uncap FPS Toggle Logic
+  document.getElementById('uncapFpsToggle').addEventListener('change', (e) => {
+    config.uncapFps = e.target.checked;
+    document.getElementById('uncapFpsLabel').textContent = config.uncapFps ? 'On' : 'Off';
+
+    // Clear any existing physics and adaptive loops
+    if (physicsLoopId) clearInterval(physicsLoopId);
+    if (adaptiveFpsIntervalId) clearInterval(adaptiveFpsIntervalId);
+
+    if (config.uncapFps) {
+      // When uncapping, start a new setInterval for the physics
+      targetFps = 60; // Start at 60
+      
+      const adjustFps = () => {
+        if (isRunning && config.uncapFps && targetFps < 1200) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
+            targetFps += 20; // Gradually increase the simulation speed by 20
+            
+            clearInterval(physicsLoopId);
+            physicsLoopId = setInterval(physicsLoop, 1000 / targetFps);
+        }
+      };
+      
+      physicsLoopId = setInterval(physicsLoop, 1000 / targetFps);
+      adaptiveFpsIntervalId = setInterval(adjustFps, 100); // Check to speed up every 100ms
+    } else {
+      // Capped FPS: run physics at a fixed 60Hz.
+      targetFps = 60;
+      physicsLoopId = setInterval(physicsLoop, 1000 / 60);
+    }
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ 
+    PhysicsModule.init(config.particleCount);
+    resetGraphs(); // Reset all graphs when reset is pressed
+  });
+  document.getElementById('pauseBtn').addEventListener('click', (e)=>{ 
+    isRunning = !isRunning; 
+    e.target.textContent = isRunning? 'Pause':'Resume'; 
+  });
+  document.getElementById('pipeBtn').addEventListener('click', (e)=>{ 
+    config.pipeOpen = !config.pipeOpen; 
+    e.target.textContent = config.pipeOpen ? 'Close Pipe' : 'Open Pipe';
+  });
+}
+
+wireUI();
+
+// Initialize physics and start
+document.getElementById('loading').textContent = 'Seeding particles...';
+PhysicsModule.init(config.particleCount);
+
+// Start the default capped physics loop (60Hz)
+if (!physicsLoopId) {
+    physicsLoopId = setInterval(physicsLoop, 1000 / 60);
+}
+
+document.getElementById('loading').style.display = 'none';
+
+// Start the rendering loop
+requestAnimationFrame(mainLoop);
+
+</script>
+
+</body></html>
