@@ -1,4 +1,4 @@
-Turn drag on for gravity, the hot early universe did not have planets, slow the sim down to see gravity!!
+this readme is outdated the tooltips in the game are also outdated enjoy!
 
 # Ultimate Ideal Gas Simulation - VC funded project
 
