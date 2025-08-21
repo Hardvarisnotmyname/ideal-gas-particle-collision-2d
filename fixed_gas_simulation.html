@@ -2,80 +2,223 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ultimate Ideal Gas Simulation – Optimized</title>
-<style>/* Modern Dark Minimal - Dark Gray & Red */
-*{margin:2;padding:0;box-sizing:border-box}
-body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif;overflow:hidden}
+<title>🚀💥Ultimate Gas Sim☠📝</title>
+<style>
+/* ===================== THEME VARIABLES ===================== */
+:root {
+  /* Backgrounds */
+  --bg-dark: #121212;          /* Page background */
+  --bg-panel: #1e1e1e;         /* Side/stat panels */
+  --bg-controls: #161616;      /* Top control panel */
+  --bg-graph: #0f0f0f;         /* Graph background */
 
-.container{width:100vw;height:100vh;display:flex;flex-direction:column}
-.controls{height:100px;background:linear-gradient(135deg,#1C0000,#000E1C);border-bottom:2px solid 	#04006E;padding:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.control-group{display:flex;flex-direction:column;align-items:center;min-width:10px;position:relative}
-.control-group label{font-size:13px;margin-bottom:-2px;color:#A1A1A1;cursor:help}
-.control-group input[type=range]{width:90px;cursor:pointer;background:#04006E;border-radius:10px;height:4px}
-.control-group input[type=range]::-webkit-slider-track{background:#04006E;border-radius:10px;height:4px;border:1px solid #3a3a3a}
-.control-group input[type=range]::-moz-range-track{background:#04006E;border-radius:10px;height:4px;border:1px solid #3a3a3a}
-.control-group input[type=range]::-webkit-slider-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;appearance:none}
-.control-group input[type=range]::-moz-range-thumb{background:#ef4444;border-radius:50%;border:none;width:12px;height:12px;cursor:pointer}
-.control-group .value{font-size:10px;color:#ff9900;margin-top:2px}
+  /* Borders/Outlines */
+  --border-default: #333333;   /* Standard borders */
+  --border-strong: #444444;    /* Stronger panel separators */
 
-.button{background:#000000;border:1px solid #b91c1c;color:#ffffff;padding:6px 10px;border-radius:5px;cursor:pointer;font-size:11px}
-.button:hover{background:#b91c1c;color:#ffffff;}
+  /* Text */
+  --text-primary: #e0e0e0;     /* Main text */
+  --text-secondary: #a1a1a1;   /* Labels, secondary info */
+  --text-title: #ef4444;       /* Title (accented red) */
 
-.main-content{flex:1;display:flex;height:calc(100vh - 120px)}
-.simulation-area{flex:1;position:relative}
-#canvas{width:100%;height:100%;background:#1a1a1a;display:block}
+  /* Accents */
+  --accent-hot: #ef4444;       /* Hot/red particles */
+  --accent-cold: #3b82f6;      /* Cold/blue particles */
+  --accent-green: #22c55e;     /* On/active state */
+  --accent-yellow: #facc15;    /* Warnings/alerts */
 
-.stats-graphs{width:320px;background:#1e1e1e;border-left:2px solid #04006E;padding:4px;display:flex;flex-direction:column;gap:8px}
-.stats{background:#010f1c;border:1px solid #3a3a3a;border-radius:6px;padding:8px;font-size:12px;color:#e0e0e0}
-.stat-row{display:flex;justify-content:space-between;margin-bottom:4px}
-.graph{background:#010f1c;border:1px solid #04006E;border-radius:6px;height:120px;position:relative;padding:2px}
-.graph canvas{width:100%;height:100%}
-.graph-title{position:absolute;left:8px;top:6px;font-size:12px;color:#c4c4c4}
-.loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#e0e0e0}
+  /* Controls */
+  --slider-track: #222222;     /* Slider background */
+  --slider-thumb: var(--accent-hot); /* Slider handle */
+}
 
-.switch{display:flex;align-items:center;gap:12px}
+/* ===================== GLOBAL STYLES ===================== */
+* {margin:0;padding:0;box-sizing:border-box}
+body {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: "Segoe UI","Roboto",sans-serif;
+  overflow:hidden;
+}
+
+.container {width:100vw;height:100vh;display:flex;flex-direction:column}
+
+/* ===================== TITLE ===================== */
+.title-bar {
+  position:absolute;
+  top:6px;left:12px;
+  font-size:14px;
+  font-weight:bold;
+  color: var(--text-title);
+  opacity:0.85;
+  pointer-events:none;
+  z-index:1000;
+  letter-spacing:1px;
+}
+
+/* ===================== CONTROLS (Compact Sleek) ===================== */
+.controls {
+  height:100px;
+  background: var(--bg-controls);
+  border-bottom:1px solid var(--border-strong);
+  padding:4px 6px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+}
+
+.control-group {
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:4px;
+  padding:2px 6px;
+  border-radius:4px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border-default);
+}
+.control-group label {
+  font-size:12px;
+  color: var(--text-secondary);
+  cursor:help;
+}
+.control-group input[type=range] {
+  width:70px;
+  cursor:pointer;
+  background: var(--slider-track);
+  border-radius:10px;
+  height:3px;
+}
+.control-group input[type=range]::-webkit-slider-thumb {
+  background: var(--slider-thumb);
+  border-radius:50%;
+  border:none;
+  width:10px;height:10px;
+  appearance:none;
+}
+.control-group input[type=range]::-moz-range-thumb {
+  background: var(--slider-thumb);
+  border-radius:50%;
+  border:none;
+  width:10px;height:10px;
+  cursor:pointer;
+}
+.control-group .value {
+  font-size:9px;
+  color: var(--accent-yellow);
+}
+
+/* ===================== BUTTONS ===================== */
+.button {
+  background: var(--bg-panel);
+  border:1px solid var(--border-default);
+  color: var(--text-primary);
+  padding:4px 8px;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:10px;
+  transition: background 0.2s, border 0.2s;
+}
+.button:hover {
+  background: var(--accent-hot);
+  border-color: var(--accent-hot);
+  color:#fff;
+}
+
+/* ===================== SWITCHES ===================== */
+.switch {display:flex;align-items:center;gap:4px}
 .switch input {
-  width: 34px;
-  height: 18px;
+  width: 28px;
+  height: 14px;
   appearance: none;
-  background: #012235;
-  border-radius: 12px;
+  background: var(--slider-track);
+  border-radius: 10px;
   position: relative;
   cursor: pointer;
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--border-default);
 }
-
-.switch input:checked {
-  background: #ef4444;
-}
-
+.switch input:checked {background: var(--accent-hot);}
 .switch input::before {
   content: '';
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #121212;
-  left: 3px;               /* add small left padding */
-  top: 50%;                /* center vertically */
-  transform: translateY(-50%); /* truly center */
-  transition: transform .18s, left .18s;
+  background: var(--bg-dark);
+  left: 2px;top:50%;transform: translateY(-50%);
+  transition: transform .18s;
 }
-
 .switch input:checked::before {
-  transform: translateY(-50%) translateX(16px); /* move thumb on check */
-  background: #1a1a1a;
+  transform: translateY(-50%) translateX(12px);
 }
 
-/* Tooltip Styles */
-.tooltip {position: relative;cursor: help;}
-.tooltip::after {content: attr(data-tooltip);position: absolute;top:125%;left:50%;transform: translateX(-50%);background:#111;color:#e0e0e0;padding:8px 12px;border-radius:6px;border:1px solid #ef4444;font-size:11px;white-space: nowrap;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;pointer-events:none;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.5);max-width:300px;white-space:normal;text-align:center;line-height:1.3;}
-.tooltip::before {content: '';position: absolute;top:116%;left:50%;transform: translateX(-50%);border: 6px solid transparent;border-bottom-color: #04006E;opacity:0;visibility:hidden;transition:opacity 0.3s, visibility 0.3s;z-index:1001;}
-.tooltip:hover::after,.tooltip:hover::before{opacity:1;visibility:visible;}
+/* ===================== MAIN CONTENT ===================== */
+.main-content {flex:1;display:flex;height:calc(100vh - 70px)}
+.simulation-area {flex:1;position:relative}
+#canvas {width:100%;height:100%;background:#1a1a1a;display:block}
 
+/* ===================== STATS/GRAPHS ===================== */
+.stats-graphs {
+  width:280px;
+  background: var(--bg-panel);
+  border-left:1px solid var(--border-strong);
+  padding:4px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.stats {
+  background: var(--bg-controls);
+  border:1px solid var(--border-default);
+  border-radius:4px;
+  padding:6px;
+  font-size:11px;
+}
+.stat-row {display:flex;justify-content:space-between;margin-bottom:3px}
+.graph {
+  background: var(--bg-graph);
+  border:1px solid var(--border-default);
+  border-radius:4px;
+  height:100px;
+  position:relative;
+  padding:2px;
+}
+.graph-title {
+  position:absolute;
+  left:6px;top:4px;
+  font-size:11px;
+  color: var(--text-secondary);
+}
+
+/* ===================== TOOLTIP (Viewport-Clamped, Multiline) ===================== */
+.ui-tooltip {
+position: fixed; /* not clipped by parents; relative to viewport */
+top: 0; left: 0; /* will be translated into place */
+transform: translate(-9999px,-9999px);
+background: var(--bg-panel);
+color: var(--text-primary);
+padding: 6px 8px;
+border-radius: 6px;
+border: 1px solid var(--accent-hot);
+font-size: 10px;
+line-height: 1.25;
+max-width: 24ch; /* ~4–5 words per line; tweak 20–28ch */
+white-space: normal; /* enable wrapping */
+overflow-wrap: anywhere; /* prevent overflow */
+box-shadow: 0 6px 18px rgba(0,0,0,.5);
+z-index: 5000;
+pointer-events: none; /* don't block mouse */
+}
+
+
+/* Optional: subtle entrance */
+.ui-tooltip[data-visible="true"] { opacity: 1; transition: opacity .12s; }
+.ui-tooltip:not([data-visible="true"]) { opacity: 0; }
 </style>
 </head>
 <body>
+<div>☠_Ultimate.☠.Gas.☠.Simulator_☠</div>
 <div class="container">
   <div class="controls">
     <div class="control-group">
@@ -107,7 +250,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
-      <input id="pressureStrength" type="range" min="1" max="30" value="5">
+      <input id="pressureStrength" type="range" min="-10" max="30" value="5">
       <div class="value" id="pressureStrengthValue">5</div>
     </div>
     <div class="control-group">
@@ -119,7 +262,7 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of gravitational attraction between particles">Gravity Strength</label>
-      <input type="range" id="gravityStrength" min="0" max="100" step="1" value="10">
+      <input type="range" id="gravityStrength" min="-10" max="100" step="1" value="10">
       <div class="value" id="gravityStrengthValue">10</div>
     </div>
 
@@ -200,6 +343,8 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
       <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.05">
       <div class="value" id="forceSamplingValue">Auto</div>
     </div>
+	<div><span>Physics FPS:</span><span id="physicsFps">0</span></div>
+
   </div>
   
   <div class="main-content">
@@ -226,7 +371,84 @@ body{background:#121212;color:#e0e0e0;font-family:"Segoe UI","Roboto",sans-serif
 </div>
 
 <script>
-// Heavily optimized physics with spatial grid and force approximation
+// js to make css tooltip not going offscreen stuff
+(function(){
+// Single, reusable tooltip element
+const tip = document.createElement('div');
+tip.className = 'ui-tooltip';
+document.body.appendChild(tip);
+
+
+let currentTarget = null;
+const GAP = 8; // px gap from target
+
+
+function placeTooltip(target){
+const rect = target.getBoundingClientRect();
+
+
+// Preferred position: below center of target
+let x = rect.left + rect.width/2;
+let y = rect.bottom + GAP;
+
+
+// Set content first so we can measure size
+// (content already set in showTooltip)
+tip.style.transform = 'translate(0px,0px)';
+const w = tip.offsetWidth;
+const h = tip.offsetHeight;
+
+
+// Clamp horizontally to viewport
+let left = x - w/2;
+left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+
+
+// If doesn't fit below, place above
+let top = y;
+if (top + h + 8 > window.innerHeight) {
+top = rect.top - h - GAP;
+}
+
+
+tip.style.transform = `translate(${left}px, ${Math.max(8, top)}px)`;
+}
+
+
+function showTooltip(target){
+const txt = target.getAttribute('data-tooltip');
+if (!txt) return;
+currentTarget = target;
+tip.textContent = txt;
+tip.setAttribute('data-visible','true');
+placeTooltip(target);
+}
+
+
+function hideTooltip(){
+currentTarget = null;
+tip.removeAttribute('data-visible');
+// park it offscreen
+tip.style.transform = 'translate(-9999px,-9999px)';
+}
+
+
+// Event bindings for any element with data-tooltip
+  function bind(el){
+    el.addEventListener('mouseenter', ()=> showTooltip(el));
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('mousemove', ()=> placeTooltip(el));
+    el.addEventListener('focus', ()=> showTooltip(el));
+    el.addEventListener('blur', hideTooltip);
+    el.addEventListener('touchstart', ()=> showTooltip(el), {passive:true});
+    el.addEventListener('touchend', hideTooltip, {passive:true});
+  }
+
+  // 👇 Expose one global function
+  window.bindTooltips = function(){
+    document.querySelectorAll('[data-tooltip]').forEach(bind);
+  };
+})();
 
 // ---------- Config & state ----------
 const config = {
@@ -538,7 +760,7 @@ let PhysicsModule = (function(){
           const gx = Math.floor(x / gridCellSize);
           const gy = Math.floor(y / gridCellSize);
           if (Number.isFinite(gx) && Number.isFinite(gy)) { // guard NaN indices
-            const gravityRange = cfg.gravity ? 2 : 0;
+            const gravityRange = cfg.gravity ? 3 : 0;
             const pressureRange = cfg.pressure ? 1 : 0;
             const maxRange = Math.max(gravityRange, pressureRange);
 			let gravForce = 0;
@@ -1080,10 +1302,23 @@ let frameCount = 0;
 let physicsLoopId = null; // To hold the reference to our setInterval
 let adaptiveFpsIntervalId = null; // To hold the adaptive FPS adjuster
 
+let physicsTicks = 0;
+let physicsFps = 0;
+
+// measure physics loop rate every second
+setInterval(() => {
+  physicsFps = physicsTicks;
+  physicsTicks = 0;
+  document.getElementById("physicsFps").textContent = physicsFps;
+}, 1000);
+
 // The NEW physics-only loop
 function physicsLoop() {
-  if (!isRunning) return; // Don't run physics if paused
-  // Always run one step of the physics simulation
+  if (!isRunning) return;
+  
+  physicsTicks++; // count one step
+
+  // Run the physics
   PhysicsModule.update(config);
 
   // This logic is now part of the physics loop
@@ -1240,7 +1475,7 @@ function wireUI(){
       targetFps = 60; // Start at 60
       
       const adjustFps = () => {
-        if (isRunning && config.uncapFps && targetFps < 1200) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
+        if (isRunning && config.uncapFps && targetFps < 480) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
             targetFps += 20; // Gradually increase the simulation speed by 20
             
             clearInterval(physicsLoopId);
@@ -1269,10 +1504,11 @@ function wireUI(){
     config.pipeOpen = !config.pipeOpen; 
     e.target.textContent = config.pipeOpen ? 'Close Pipe' : 'Open Pipe';
   });
+
 }
 
 wireUI();
-
+bindTooltips();
 // Initialize physics and start
 document.getElementById('loading').textContent = 'Seeding particles...';
 PhysicsModule.init(config.particleCount);
