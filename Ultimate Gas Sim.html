@@ -2,7 +2,7 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🚀💥Ultimate Gas Sim☠📝</title>
+
 <style>
 /* ===================== THEME VARIABLES ===================== */
 :root {
@@ -218,7 +218,6 @@ pointer-events: none; /* don't block mouse */
 </style>
 </head>
 <body>
-<div>☠_Ultimate.☠.Gas.☠.Simulator_☠</div>
 <div class="container">
   <div class="controls">
     <div class="control-group">
@@ -299,11 +298,8 @@ pointer-events: none; /* don't block mouse */
     </div>
 
     <div class="control-group">
-      <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">Collision Mode</label>
-      <div class="switch">
-        <input type="checkbox" id="collisionMode" checked="">
-        <div id="collisionModeLabel" style="color:#7A5836" class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">SAP</div>
-      </div>
+      <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed, QuadTree for non-uniform distributions">Collision Mode</label>
+      <button class="button" id="collisionModeBtn" style="min-width:60px;">SAP</button>
 	</div>
     
     <button class="button" id="resetBtn">Reset</button>
@@ -450,6 +446,146 @@ tip.style.transform = 'translate(-9999px,-9999px)';
   };
 })();
 
+// ===================== QUADTREE IMPLEMENTATION =====================
+class QuadTree {
+  constructor(bounds, maxObjects = 10, maxLevels = 5, level = 0) {
+    this.maxObjects = maxObjects;
+    this.maxLevels = maxLevels;
+    this.level = level;
+    this.bounds = bounds; // {x, y, width, height}
+    this.objects = [];
+    this.nodes = [];
+  }
+
+  clear() {
+    this.objects = [];
+    for (let i = 0; i < this.nodes.length; i++) {
+      if (this.nodes[i]) {
+        this.nodes[i].clear();
+      }
+    }
+    this.nodes = [];
+  }
+
+  split() {
+    const subWidth = this.bounds.width / 2;
+    const subHeight = this.bounds.height / 2;
+    const x = this.bounds.x;
+    const y = this.bounds.y;
+
+    // Top-right node
+    this.nodes[0] = new QuadTree({
+      x: x + subWidth,
+      y: y,
+      width: subWidth,
+      height: subHeight
+    }, this.maxObjects, this.maxLevels, this.level + 1);
+
+    // Top-left node
+    this.nodes[1] = new QuadTree({
+      x: x,
+      y: y,
+      width: subWidth,
+      height: subHeight
+    }, this.maxObjects, this.maxLevels, this.level + 1);
+
+    // Bottom-left node
+    this.nodes[2] = new QuadTree({
+      x: x,
+      y: y + subHeight,
+      width: subWidth,
+      height: subHeight
+    }, this.maxObjects, this.maxLevels, this.level + 1);
+
+    // Bottom-right node
+    this.nodes[3] = new QuadTree({
+      x: x + subWidth,
+      y: y + subHeight,
+      width: subWidth,
+      height: subHeight
+    }, this.maxObjects, this.maxLevels, this.level + 1);
+  }
+
+  getIndex(rect) {
+    // rect = {x, y, width, height}
+    let index = -1;
+    const verticalMidpoint = this.bounds.x + (this.bounds.width / 2);
+    const horizontalMidpoint = this.bounds.y + (this.bounds.height / 2);
+
+    // Object can completely fit within the top quadrants
+    const topQuadrant = (rect.y < horizontalMidpoint && rect.y + rect.height < horizontalMidpoint);
+    // Object can completely fit within the bottom quadrants
+    const bottomQuadrant = (rect.y > horizontalMidpoint);
+
+    // Object can completely fit within the left quadrants
+    if (rect.x < verticalMidpoint && rect.x + rect.width < verticalMidpoint) {
+      if (topQuadrant) {
+        index = 1; // Top-left
+      } else if (bottomQuadrant) {
+        index = 2; // Bottom-left
+      }
+    }
+    // Object can completely fit within the right quadrants
+    else if (rect.x > verticalMidpoint) {
+      if (topQuadrant) {
+        index = 0; // Top-right
+      } else if (bottomQuadrant) {
+        index = 3; // Bottom-right
+      }
+    }
+
+    return index;
+  }
+
+  insert(obj) {
+    // obj should have properties: {x, y, width, height, particleIndex}
+    if (this.nodes.length > 0) {
+      const index = this.getIndex(obj);
+      if (index !== -1) {
+        this.nodes[index].insert(obj);
+        return;
+      }
+    }
+
+    this.objects.push(obj);
+
+    if (this.objects.length > this.maxObjects && this.level < this.maxLevels) {
+      if (this.nodes.length === 0) {
+        this.split();
+      }
+
+      let i = 0;
+      while (i < this.objects.length) {
+        const index = this.getIndex(this.objects[i]);
+        if (index !== -1) {
+          this.nodes[index].insert(this.objects.splice(i, 1)[0]);
+        } else {
+          i++;
+        }
+      }
+    }
+  }
+
+  retrieve(returnObjects, rect) {
+    const index = this.getIndex(rect);
+    if (index !== -1 && this.nodes.length > 0) {
+      this.nodes[index].retrieve(returnObjects, rect);
+    }
+
+    for (let i = 0; i < this.objects.length; i++) {
+      returnObjects.push(this.objects[i]);
+    }
+
+    return returnObjects;
+  }
+
+  // Convenience method for querying
+  query(rect) {
+    const returnObjects = [];
+    return this.retrieve(returnObjects, rect);
+  }
+}
+
 // ---------- Config & state ----------
 const config = {
   particleCount: 10000,
@@ -459,7 +595,7 @@ const config = {
   pipeHeight: 1,
   substeps: 2,
   tunneling: 2500,
-  useSAP: true,
+  collisionMode: 'sap', // Now string-based: 'sap', 'grid', 'quadtree'
   pipeOpen: false,
   width: 1000,
   height: 1000,
@@ -582,6 +718,9 @@ let PhysicsModule = (function(){
   let gridWidth = 0;
   let gridHeight = 0;
 
+  // QuadTree for collision detection
+  let quadTree = null;
+
   // Force sampling variables - persistent across calls for better distribution
   let forceUpdateOffset = 0;
 
@@ -657,6 +796,14 @@ let PhysicsModule = (function(){
     const w = config.width, h = config.height, cx = w/2, margin = config.radius + 1;
     
     initSpatialGrid(w, h);
+    
+    // Initialize QuadTree
+    quadTree = new QuadTree({
+      x: 0,
+      y: 0,
+      width: w,
+      height: h
+    }, 10, 5);
     
     for(let i=0;i<count;i++){ 
       const idx=i*8; 
@@ -959,164 +1106,208 @@ let PhysicsModule = (function(){
     }
   }
 
-  // Optimized collision detection with early termination
+  // Optimized collision detection with three modes: SAP, Grid, and QuadTree
   const CollisionStats = { collisions:0, checks:0 };
+  
   function handleCollisions(cfg){
     const p = Module.particles; 
     const n = Module.particleCount; 
     CollisionStats.collisions = 0; 
     CollisionStats.checks = 0;
     
+    if(cfg.collisionMode === 'sap'){
+      handleSAPCollisions(cfg, p, n);
+    } else if(cfg.collisionMode === 'grid'){
+      handleGridCollisions(cfg, p, n);
+    } else if(cfg.collisionMode === 'quadtree'){
+      handleQuadTreeCollisions(cfg, p, n);
+    }
     
-    if(cfg.useSAP){
-      // Pre-allocate sorted indices array
-      const idxs = new Uint32Array(n);
-      for(let i=0;i<n;i++) idxs[i]=i;
+    Module.collisionStats = { collisions: CollisionStats.collisions, checks: CollisionStats.checks };
+  }
+
+  function handleSAPCollisions(cfg, p, n) {
+    // Pre-allocate sorted indices array
+    const idxs = new Uint32Array(n);
+    for(let i=0;i<n;i++) idxs[i]=i;
+    
+    // Use faster sorting for float32 positions
+    const positions = new Float32Array(n);
+    for(let i=0;i<n;i++) positions[i] = p[i*8];
+    
+    // Sort indices by x position
+    idxs.sort((a,b) => positions[a] - positions[b]);
+    
+    for(let i=0;i<n;i++){
+      const a = idxs[i]*8;
+      const ax = p[a], ay = p[a+1], ar = p[a+7];
       
-      // Use faster sorting for float32 positions
-      const positions = new Float32Array(n);
-      for(let i=0;i<n;i++) positions[i] = p[i*8];
+      // Early termination optimization
+      let collisionCount = 0;
+      const maxCollisionsPerParticle = 8; // limit collisions per particle
       
-      // Sort indices by x position
-      idxs.sort((a,b) => positions[a] - positions[b]);
-      
-      for(let i=0;i<n;i++){
-        const a = idxs[i]*8;
-        const ax = p[a], ay = p[a+1], ar = p[a+7];
+      for(let j=i+1;j<n && collisionCount < maxCollisionsPerParticle;j++){
+        const b = idxs[j]*8;
+        const bx = p[b];
+        if(bx - p[b+7] > ax + ar) break; // SAP early exit
         
-        // Early termination optimization
-        let collisionCount = 0;
-        const maxCollisionsPerParticle = 8; // limit collisions per particle
+        CollisionStats.checks++;
+        const dx = bx - ax;
+        const dy = p[b+1] - ay;
+        const dist2 = dx*dx + dy*dy; // avoid sqrt
+        const minD = (ar + p[b+7])/2;
+        const minD2 = minD * minD;
         
-        for(let j=i+1;j<n && collisionCount < maxCollisionsPerParticle;j++){
-          const b = idxs[j]*8;
-          const bx = p[b];
-          if(bx - p[b+7] > ax + ar) break; // SAP early exit
-          
-          CollisionStats.checks++;
-          const dx = bx - ax;
-          const dy = p[b+1] - ay;
-          const dist2 = dx*dx + dy*dy; // avoid sqrt
-          const minD = (ar + p[b+7])/2;
-          const minD2 = minD * minD;
-          
-          if(dist2 < minD2 && dist2 > 0.01){ // avoid division by zero
-            CollisionStats.collisions++;
-            collisionCount++;
-            
-            const dist = Math.sqrt(dist2);
-            const nx = dx / dist;
-            const ny = dy / dist;
-            
-            // Optimized elastic collision
-            const m1 = 1, m2 = 1; // equal masses
-            const v1x = p[a+2], v1y = p[a+3];
-            const v2x = p[b+2], v2y = p[b+3];
-            
-            const kx = v1x - v2x;
-            const ky = v1y - v2y;
-            const momentum = (nx * kx + ny * ky); // simplified for equal masses
-            
-            if(cfg.friction) {
-              const f = cfg.frictionCoeff;
-              p[a+2] = (v1x - momentum * nx) * f;
-              p[a+3] = (v1y - momentum * ny) * f;
-              p[b+2] = (v2x + momentum * nx) * f;
-              p[b+3] = (v2y + momentum * ny) * f;
-            } else {
-              p[a+2] = v1x - momentum * nx;
-              p[a+3] = v1y - momentum * ny;
-              p[b+2] = v2x + momentum * nx;
-              p[b+3] = v2y + momentum * ny;
-            }
-            
-            // Optimized separation
-            const overlap = minD - dist;
-            const sep = Math.min(overlap * 0.6, minD * 0.2);
-            p[a] -= nx * sep;
-            p[a+1] -= ny * sep;
-            p[b] += nx * sep;
-            p[b+1] += ny * sep;
-          }
+        if(dist2 < minD2 && dist2 > 0.01){ // avoid division by zero
+          CollisionStats.collisions++;
+          collisionCount++;
+          resolveCollision(p, a, b, dx, dy, dist2, minD, cfg);
         }
       }
-    } else {
-      // Optimized grid collision detection
-      const cell = Math.max(8, cfg.radius*3); // smaller cells for better distribution
-      const gw = Math.ceil(cfg.width/cell);
-      const gh = Math.ceil(cfg.height/cell);
-      const grid = new Array(gw*gh);
+    }
+  }
+
+  function handleGridCollisions(cfg, p, n) {
+    // Optimized grid collision detection
+    const cell = Math.max(8, cfg.radius*8); // smaller cells for better distribution
+    const gw = Math.ceil(cfg.width/cell);
+    const gh = Math.ceil(cfg.height/cell);
+    const grid = new Array(gw*gh);
+    
+    for(let i=0;i<grid.length;i++) grid[i] = [];
+    
+    // Build grid
+    for(let i=0;i<n;i++){
+      const idx=i*8;
+      const gx=Math.floor(p[idx]/cell);
+      const gy=Math.floor(p[idx+1]/cell);
+      if(gx>=0&&gx<gw&&gy>=0&&gy<gh) grid[gy*gw+gx].push(i);
+    }
+    
+    // Check collisions within cells
+    for(let g=0;g<grid.length;g++){
+      const cellArr=grid[g];
+      const cellSize = cellArr.length;
       
-      for(let i=0;i<grid.length;i++) grid[i] = [];
+      // Skip very dense cells for performance
+      if(cellSize > 100) continue;
       
-      // Build grid
-      for(let i=0;i<n;i++){
-        const idx=i*8;
-        const gx=Math.floor(p[idx]/cell);
-        const gy=Math.floor(p[idx+1]/cell);
-        if(gx>=0&&gx<gw&&gy>=0&&gy<gh) grid[gy*gw+gx].push(i);
-      }
-      
-      // Check collisions within cells
-      for(let g=0;g<grid.length;g++){
-        const cellArr=grid[g];
-        const cellSize = cellArr.length;
-        
-        // Skip very dense cells for performance
-        if(cellSize > 100) continue;
-        
-        for(let a=0;a<cellSize;a++){
-          for(let b=a+1;b<cellSize;b++){
-            const ai=cellArr[a]*8, bi=cellArr[b]*8;
-            CollisionStats.checks++;
-            
-            const dx=p[bi]-p[ai];
-            const dy=p[bi+1]-p[ai+1];
-            const dist2=dx*dx+dy*dy;
-            const minD=(p[ai+7]+p[bi+7])/2; //half radius
-            const minD2 = minD*minD;
-            
-            if(dist2<minD2 && dist2>0.01){
-              CollisionStats.collisions++;
-              const dist = Math.sqrt(dist2);
-              const nx = dx / dist;
-              const ny = dy / dist;
-              
-              // Optimized elastic collision
-              const m1 = 1, m2 = 1;
-              const v1x = p[ai+2], v1y = p[ai+3];
-              const v2x = p[bi+2], v2y = p[bi+3];
-              
-              const kx = v1x - v2x;
-              const ky = v1y - v2y;
-              const momentum = (nx * kx + ny * ky);
-              
-              if(cfg.friction) {
-                const f = cfg.frictionCoeff;
-                p[ai+2] = (v1x - momentum * nx) * f;
-                p[ai+3] = (v1y - momentum * ny) * f;
-                p[bi+2] = (v2x + momentum * nx) * f;
-                p[bi+3] = (v2y + momentum * ny) * f;
-              } else {
-                p[ai+2] = v1x - momentum * nx;
-                p[ai+3] = v1y - momentum * ny;
-                p[bi+2] = v2x + momentum * nx;
-                p[bi+3] = v2y + momentum * ny;
-              }
-              
-              // Optimized separation
-              const overlap = minD - dist;
-              const sep = Math.min(overlap * 0.6, minD * 0.2);
-              p[ai] -= nx * sep;
-              p[ai+1] -= ny * sep;
-              p[bi] += nx * sep;
-              p[bi+1] += ny * sep;
-            }
+      for(let a=0;a<cellSize;a++){
+        for(let b=a+1;b<cellSize;b++){
+          const ai=cellArr[a]*8, bi=cellArr[b]*8;
+          CollisionStats.checks++;
+          
+          const dx=p[bi]-p[ai];
+          const dy=p[bi+1]-p[ai+1];
+          const dist2=dx*dx+dy*dy;
+          const minD=(p[ai+7]+p[bi+7])/2; //half radius
+          const minD2 = minD*minD;
+          
+          if(dist2<minD2 && dist2>0.01){
+            CollisionStats.collisions++;
+            resolveCollision(p, ai, bi, dx, dy, dist2, minD, cfg);
           }
         }
       }
     }
-    Module.collisionStats = { collisions: CollisionStats.collisions, checks: CollisionStats.checks };
+  }
+
+  function handleQuadTreeCollisions(cfg, p, n) {
+    // Clear and rebuild quadtree
+    quadTree.clear();
+    
+    // Insert all particles into quadtree
+    for(let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const x = p[idx];
+      const y = p[idx + 1];
+      const r = p[idx + 7];
+      
+      // Create particle object for quadtree
+      const particle = {
+        x: x - r,
+        y: y - r, 
+        width: r * 2,
+        height: r * 2,
+        particleIndex: i
+      };
+      
+      quadTree.insert(particle);
+    }
+    
+    // Check collisions using quadtree
+    for(let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const x = p[idx];
+      const y = p[idx + 1];
+      const r = p[idx + 7];
+      
+      // Query quadtree for potential collisions
+      const queryRect = {
+        x: x - r,
+        y: y - r,
+        width: r * 2,
+        height: r * 4
+      };
+      
+      const nearbyParticles = quadTree.query(queryRect);
+      
+      // Check actual collisions with nearby particles
+      for(let j = 0; j < nearbyParticles.length; j++) {
+        const otherIdx = nearbyParticles[j].particleIndex;
+        if(otherIdx <= i) continue; // avoid duplicate checks
+        
+        const bi = otherIdx * 8;
+        CollisionStats.checks++;
+        
+        const dx = p[bi] - p[idx];
+        const dy = p[bi + 1] - p[idx + 1];
+        const dist2 = dx * dx + dy * dy;
+        const minD = (p[idx + 7] + p[bi + 7]) / 2;
+        const minD2 = minD * minD;
+        
+        if(dist2 < minD2 && dist2 > 0.01) {
+          CollisionStats.collisions++;
+          resolveCollision(p, idx, bi, dx, dy, dist2, minD, cfg);
+        }
+      }
+    }
+  }
+
+  function resolveCollision(p, ai, bi, dx, dy, dist2, minD, cfg) {
+    const dist = Math.sqrt(dist2);
+    const nx = dx / dist;
+    const ny = dy / dist;
+    
+    // Optimized elastic collision
+    const m1 = 1, m2 = 1; // equal masses
+    const v1x = p[ai+2], v1y = p[ai+3];
+    const v2x = p[bi+2], v2y = p[bi+3];
+    
+    const kx = v1x - v2x;
+    const ky = v1y - v2y;
+    const momentum = (nx * kx + ny * ky); // simplified for equal masses
+    
+    if(cfg.friction) {
+      const f = cfg.frictionCoeff;
+      p[ai+2] = (v1x - momentum * nx) * f;
+      p[ai+3] = (v1y - momentum * ny) * f;
+      p[bi+2] = (v2x + momentum * nx) * f;
+      p[bi+3] = (v2y + momentum * ny) * f;
+    } else {
+      p[ai+2] = v1x - momentum * nx;
+      p[ai+3] = v1y - momentum * ny;
+      p[bi+2] = v2x + momentum * nx;
+      p[bi+3] = v2y + momentum * ny;
+    }
+    
+    // Optimized separation
+    const overlap = minD - dist;
+    const sep = Math.min(overlap * 0.6, minD * 0.2);
+    p[ai] -= nx * sep;
+    p[ai+1] -= ny * sep;
+    p[bi] += nx * sep;
+    p[bi+1] += ny * sep;
   }
 
   // Optimized color update with caching
@@ -1167,7 +1358,7 @@ function renderParticlesToWebGL(particles, count){
         const idx=i*8;
         const x = Math.floor(particles[idx]);
         const y = Math.floor(particles[idx+1]);
-        const r = Math.floor(particles[idx+7]);
+		const r = Math.floor(particles[idx+7]);
         
         if(x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
           const pixelIdx = (y * canvas.width + x) * 4;
@@ -1434,9 +1625,18 @@ function wireUI(){
   set('gravityStrength', v=> config.gravityStrength=Number(v), v=>v);
   set('gravityExponent', v=> config.gravityExponent=Number(v), v=>Number(v).toFixed(1));
   
-  document.getElementById('collisionMode').addEventListener('change', (e)=>{ 
-    config.useSAP = e.target.checked; 
-    document.getElementById('collisionModeLabel').textContent = config.useSAP?'SAP':'Grid'; 
+  // Collision Mode Button (cycles through SAP -> Grid -> QuadTree)
+  document.getElementById('collisionModeBtn').addEventListener('click', (e) => {
+    if (config.collisionMode === 'sap') {
+      config.collisionMode = 'grid';
+      e.target.textContent = 'Grid';
+    } else if (config.collisionMode === 'grid') {
+      config.collisionMode = 'quadtree';
+      e.target.textContent = 'QuadTree';
+    } else {
+      config.collisionMode = 'sap';
+      e.target.textContent = 'SAP';
+    }
   });
   
   document.getElementById('gravityToggle').addEventListener('change', (e)=>{ 
@@ -1475,7 +1675,7 @@ function wireUI(){
       targetFps = 60; // Start at 60
       
       const adjustFps = () => {
-        if (isRunning && config.uncapFps && targetFps < 480) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
+        if (isRunning && config.uncapFps && targetFps < 250) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
             targetFps += 20; // Gradually increase the simulation speed by 20
             
             clearInterval(physicsLoopId);
