@@ -2,7 +2,6 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <style>
 /* ===================== THEME VARIABLES ===================== */
 :root {
@@ -222,22 +221,22 @@ pointer-events: none; /* don't block mouse */
   <div class="controls">
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls total no of particles, use grid mode if too many particles are lagging the sim">Total Particles</label>
-      <input id="particleCount" type="range" min="100" max="200000" step="100" value="10000" >
+      <input id="particleCount" type="range" min="250" max="100000" step="250" value="10000" >
       <div class="value" id="particleCountValue">10000</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls the starting speed of the particles in the left box, updates real-time">Left Temp</label>
-      <input id="leftTemp" type="range" min="0" max="30000" value="5000" >
+      <input id="leftTemp" type="range" min="0" max="10000" step="250" value="5000" >
       <div class="value" id="leftTempValue">5000</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls the starting speed of the particles in the right box, updates real-time">Right Temp</label>
-      <input id="rightTemp" type="range" min="0" max="30000" value="50">
+      <input id="rightTemp" type="range" min="0" max="10000" step="250" value="50">
       <div class="value" id="rightTempValue">50</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls particle size, bigger particles collide more">Radius</label>
-      <input id="radius" type="range" min="1" max="32" value="2"  >
+      <input id="radius" type="range" min="1" max="32" value="4"  >
       <div class="value" id="radiusValue">2px</div>
     </div>
     <div class="control-group">
@@ -249,7 +248,7 @@ pointer-events: none; /* don't block mouse */
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
-      <input id="pressureStrength" type="range" min="-10" max="30" value="5">
+      <input id="pressureStrength" type="range" min="-30" max="30" value="5">
       <div class="value" id="pressureStrengthValue">5</div>
     </div>
     <div class="control-group">
@@ -261,14 +260,18 @@ pointer-events: none; /* don't block mouse */
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Strength of gravitational attraction between particles">Gravity Strength</label>
-      <input type="range" id="gravityStrength" min="-10" max="100" step="1" value="10">
+      <input type="range" id="gravityStrength" min="-100" max="100" step="1" value="10">
       <div class="value" id="gravityStrengthValue">10</div>
     </div>
-
     <div class="control-group">
       <label class="tooltip" data-tooltip="Power law exponent for gravity force (2 = inverse square law)">Gravity Exponent</label>
       <input type="range" id="gravityExponent" min="0.1" max="3" step="0.1" value="2">
       <div class="value" id="gravityExponentValue">2.0</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Effective range of gravity, in grid cells. Higher values are more expensive.">Gravity Range</label>
+      <input type="range" id="gravityDistance" min="1" max="20" step="1" value="3">
+      <div class="value" id="gravityDistanceValue">3</div>
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Particles loose energy when they collide">Friction</label>
@@ -286,7 +289,7 @@ pointer-events: none; /* don't block mouse */
     </div>
     <div class="control-group">
       <label class="tooltip" data-tooltip="Air resistance coefficient - higher values slow particles more">Drag Coefficient</label>
-      <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.05">
+      <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.005">
       <div class="value" id="dragCoeffValue">0.05</div>
     </div>
     <div class="control-group">
@@ -296,11 +299,18 @@ pointer-events: none; /* don't block mouse */
         <div id="uncapFpsLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
-
     <div class="control-group">
-      <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed, QuadTree for non-uniform distributions">Collision Mode</label>
-      <button class="button" id="collisionModeBtn" style="min-width:60px;">SAP</button>
+      <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">Collision Mode</label>
+      <div class="switch">
+        <input type="checkbox" id="collisionMode" checked="">
+        <div id="collisionModeLabel" style="color:#7A5836" class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">SAP</div>
+      </div>
 	</div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Size of the spatial grid cells for force calculations. Smaller is more precise but can be slower.">Grid Size</label>
+      <input type="range" id="gridSize" min="5" max="50" step="5" value="20">
+      <div class="value" id="gridSizeValue">20px</div>
+    </div>
     
     <button class="button" id="resetBtn">Reset</button>
     <button class="button" id="pauseBtn">Pause</button>
@@ -310,6 +320,11 @@ pointer-events: none; /* don't block mouse */
       <label class="tooltip" data-tooltip="Controls size of opening in the middle, higher value opens more">Pipe Height</label>
       <input id="pipeHeight" type="range" min="0" max="100" value="1"  >
       <div class="value" id="pipeHeightValue">1%</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Moves the central dividing wall. 50% is center, 0% is far left, 100% is far right.">Wall Position</label>
+      <input id="wallPosition" type="range" min="0" max="100" value="50">
+      <div class="value" id="wallPositionValue">50%</div>
     </div>
 	
     <div class="control-group">
@@ -329,34 +344,28 @@ pointer-events: none; /* don't block mouse */
       <input id="substeps" type="range" min="1" max="8" value="2" >
       <div class="value" id="substepsValue">2</div>
     </div>
-    <div class="control-group">
-      <label class="tooltip" data-tooltip="Slow all particles down">Max Speed</label>
-      <input id="tunneling" type="range" min="5" max="2500" value="2500">
-      <div class="value" id="tunnelingValue">2500</div>
-    </div>
-    <div class="control-group">
-      <label class="tooltip" data-tooltip="Only applies expensive forces (gravity/pressure) to this fraction of particles each frame for better performance">Force Sampling</label>
-      <input id="forceSampling" type="range" min="0.05" max="1.0" step="0.01" value="0.05">
-      <div class="value" id="forceSamplingValue">Auto</div>
-    </div>
 	<div><span>Physics FPS:</span><span id="physicsFps">0</span></div>
-
   </div>
   
   <div class="main-content">
     <div class="simulation-area">
       <canvas id="canvas" width="1510" height="832" style="width: 1208px; height: 665.6px;"></canvas>
+	  <canvas id="overlay" style="position:absolute; inset:0; pointer-events:none;"></canvas>
       <div class="loading" id="loading" style="display: none;">Seeding particles...</div>
     </div>
     <div class="stats-graphs">
       <div class="stats" id="stats">
         <div class="stat-row"><span>FPS:</span><span id="fps">60</span></div>
         <div class="stat-row"><span>Target FPS:</span><span id="targetFps">60</span></div>
+        <div class="stat-row"><span>Total Particles:</span><span id="totalParticles">10000</span></div>
         <div class="stat-row"><span>Collisions/sec:</span><span id="collisionRate">124</span></div>
         <div class="stat-row"><span>Collision Checks:</span><span id="collisionChecks">9074</span></div>
-        <div class="stat-row"><span>Left Box Temp:</span><span id="leftBoxTemp">60.46</span></div>
-        <div class="stat-row"><span>Right Box Temp:</span><span id="rightBoxTemp">8.27</span></div>
-        <div class="stat-row"><span>Total Particles:</span><span id="totalParticles">10000</span></div>
+        <div class="stat-row"><span>Left Box Temp:</span><span id="leftBoxTemp">0.00</span></div>
+        <div class="stat-row"><span>Right Box Temp:</span><span id="rightBoxTemp">0.00</span></div>
+        <div class="stat-row"><span>Left Avg Speed:</span><span id="leftAvgSpeed">0.00</span></div>
+        <div class="stat-row"><span>Right Avg Speed:</span><span id="rightAvgSpeed">0.00</span></div>
+        <div class="stat-row"><span>Left Max Speed:</span><span id="leftMaxSpeed">0.00</span></div>
+        <div class="stat-row"><span>Right Max Speed:</span><span id="rightMaxSpeed">0.00</span></div>
       </div>
       <div class="graph"><div class="graph-title">Left Temp (Recent)</div><canvas id="leftTempRecentGraph" width="280" height="90"></canvas></div>
       <div class="graph"><div class="graph-title">Right Temp (Recent)</div><canvas id="rightTempRecentGraph" width="280" height="90"></canvas></div>
@@ -446,156 +455,16 @@ tip.style.transform = 'translate(-9999px,-9999px)';
   };
 })();
 
-// ===================== QUADTREE IMPLEMENTATION =====================
-class QuadTree {
-  constructor(bounds, maxObjects = 10, maxLevels = 5, level = 0) {
-    this.maxObjects = maxObjects;
-    this.maxLevels = maxLevels;
-    this.level = level;
-    this.bounds = bounds; // {x, y, width, height}
-    this.objects = [];
-    this.nodes = [];
-  }
-
-  clear() {
-    this.objects = [];
-    for (let i = 0; i < this.nodes.length; i++) {
-      if (this.nodes[i]) {
-        this.nodes[i].clear();
-      }
-    }
-    this.nodes = [];
-  }
-
-  split() {
-    const subWidth = this.bounds.width / 2;
-    const subHeight = this.bounds.height / 2;
-    const x = this.bounds.x;
-    const y = this.bounds.y;
-
-    // Top-right node
-    this.nodes[0] = new QuadTree({
-      x: x + subWidth,
-      y: y,
-      width: subWidth,
-      height: subHeight
-    }, this.maxObjects, this.maxLevels, this.level + 1);
-
-    // Top-left node
-    this.nodes[1] = new QuadTree({
-      x: x,
-      y: y,
-      width: subWidth,
-      height: subHeight
-    }, this.maxObjects, this.maxLevels, this.level + 1);
-
-    // Bottom-left node
-    this.nodes[2] = new QuadTree({
-      x: x,
-      y: y + subHeight,
-      width: subWidth,
-      height: subHeight
-    }, this.maxObjects, this.maxLevels, this.level + 1);
-
-    // Bottom-right node
-    this.nodes[3] = new QuadTree({
-      x: x + subWidth,
-      y: y + subHeight,
-      width: subWidth,
-      height: subHeight
-    }, this.maxObjects, this.maxLevels, this.level + 1);
-  }
-
-  getIndex(rect) {
-    // rect = {x, y, width, height}
-    let index = -1;
-    const verticalMidpoint = this.bounds.x + (this.bounds.width / 2);
-    const horizontalMidpoint = this.bounds.y + (this.bounds.height / 2);
-
-    // Object can completely fit within the top quadrants
-    const topQuadrant = (rect.y < horizontalMidpoint && rect.y + rect.height < horizontalMidpoint);
-    // Object can completely fit within the bottom quadrants
-    const bottomQuadrant = (rect.y > horizontalMidpoint);
-
-    // Object can completely fit within the left quadrants
-    if (rect.x < verticalMidpoint && rect.x + rect.width < verticalMidpoint) {
-      if (topQuadrant) {
-        index = 1; // Top-left
-      } else if (bottomQuadrant) {
-        index = 2; // Bottom-left
-      }
-    }
-    // Object can completely fit within the right quadrants
-    else if (rect.x > verticalMidpoint) {
-      if (topQuadrant) {
-        index = 0; // Top-right
-      } else if (bottomQuadrant) {
-        index = 3; // Bottom-right
-      }
-    }
-
-    return index;
-  }
-
-  insert(obj) {
-    // obj should have properties: {x, y, width, height, particleIndex}
-    if (this.nodes.length > 0) {
-      const index = this.getIndex(obj);
-      if (index !== -1) {
-        this.nodes[index].insert(obj);
-        return;
-      }
-    }
-
-    this.objects.push(obj);
-
-    if (this.objects.length > this.maxObjects && this.level < this.maxLevels) {
-      if (this.nodes.length === 0) {
-        this.split();
-      }
-
-      let i = 0;
-      while (i < this.objects.length) {
-        const index = this.getIndex(this.objects[i]);
-        if (index !== -1) {
-          this.nodes[index].insert(this.objects.splice(i, 1)[0]);
-        } else {
-          i++;
-        }
-      }
-    }
-  }
-
-  retrieve(returnObjects, rect) {
-    const index = this.getIndex(rect);
-    if (index !== -1 && this.nodes.length > 0) {
-      this.nodes[index].retrieve(returnObjects, rect);
-    }
-
-    for (let i = 0; i < this.objects.length; i++) {
-      returnObjects.push(this.objects[i]);
-    }
-
-    return returnObjects;
-  }
-
-  // Convenience method for querying
-  query(rect) {
-    const returnObjects = [];
-    return this.retrieve(returnObjects, rect);
-  }
-}
-
 // ---------- Config & state ----------
 const config = {
   particleCount: 10000,
   leftTemp: 5000,
   rightTemp: 50,
-  radius: 2,
+  radius: 4,
   pipeHeight: 1,
   substeps: 2,
-  tunneling: 2500,
-  collisionMode: 'sap', // Now string-based: 'sap', 'grid', 'quadtree'
+  tunneling: 5000,
+  useSAP: true,
   pipeOpen: false,
   width: 1000,
   height: 1000,
@@ -608,10 +477,12 @@ const config = {
   uncapFps: false,
   gravityStrength: 10,
   gravityExponent: 2.0,
-  frictionCoeff: 0.98,
-  dragCoeff: 0.05,
+  frictionCoeff: 0.999,
+  dragCoeff: 0.005,
   pressureStrength: 5,
-  forceSampling: 0.05
+  gridSize: 20,
+  gravityDistance: 3,
+  wallPosition: 50, // Percentage (0-100)
 };
 
 let canvas = document.getElementById('canvas');
@@ -703,6 +574,13 @@ function resize(){
   canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
   config.width = canvas.width; config.height = canvas.height;
   if(gl) gl.viewport(0,0,canvas.width,canvas.height);
+  
+  const overlay = document.getElementById('overlay');
+  overlay.width  = canvas.width;
+  overlay.height = canvas.height;
+  overlay.style.width  = canvas.style.width;
+  overlay.style.height = canvas.style.height;
+  drawWalls();
 }
 window.addEventListener('resize',()=>{ resize(); });
 resize();
@@ -714,19 +592,15 @@ let PhysicsModule = (function(){
   
   // Spatial grid for force calculations
   let spatialGrid = null;
-  let gridCellSize = 20;
   let gridWidth = 0;
   let gridHeight = 0;
-
-  // QuadTree for collision detection
-  let quadTree = null;
 
   // Force sampling variables - persistent across calls for better distribution
   let forceUpdateOffset = 0;
 
-  function initSpatialGrid(width, height) {
-    gridWidth = Math.ceil(width / gridCellSize);
-    gridHeight = Math.ceil(height / gridCellSize);
+  function reinitGrid(width, height, cellSize) {
+    gridWidth = Math.ceil(width / cellSize);
+    gridHeight = Math.ceil(height / cellSize);
     spatialGrid = new Array(gridWidth * gridHeight);
     for(let i = 0; i < spatialGrid.length; i++) {
       spatialGrid[i] = [];
@@ -735,42 +609,34 @@ let PhysicsModule = (function(){
 
   // Teleportation functions for Maxwell's Demon
   function teleportSlowParticle(p, n, cx, thresholdSq, direction) {
-    // Find a random slow particle on the specified side and teleport it
     const candidates = [];
     for(let i = 0; i < n; i++) {
       const idx = i * 8;
       const px = p[idx];
       const speedSq = p[idx+2]*p[idx+2] + p[idx+3]*p[idx+3];
-      
       if(direction === 'rightToLeft' && px > cx && speedSq < thresholdSq) {
         candidates.push(idx);
       }
     }
-    
     if(candidates.length > 0) {
       const chosenIdx = candidates[Math.floor(Math.random() * candidates.length)];
-      // Teleport to left side
       p[chosenIdx] = Math.random() * (cx - 20) + 10;
       p[chosenIdx + 1] = Math.random() * (config.height - 20) + 10;
     }
   }
   
   function teleportFastParticle(p, n, cx, thresholdSq, direction) {
-    // Find a random fast particle on the specified side and teleport it
     const candidates = [];
     for(let i = 0; i < n; i++) {
       const idx = i * 8;
       const px = p[idx];
       const speedSq = p[idx+2]*p[idx+2] + p[idx+3]*p[idx+3];
-      
       if(direction === 'leftToRight' && px < cx && speedSq >= thresholdSq) {
         candidates.push(idx);
       }
     }
-    
     if(candidates.length > 0) {
       const chosenIdx = candidates[Math.floor(Math.random() * candidates.length)];
-      // Teleport to right side  
       p[chosenIdx] = Math.random() * (config.width - cx - 20) + cx + 10;
       p[chosenIdx + 1] = Math.random() * (config.height - 20) + 10;
     }
@@ -782,9 +648,9 @@ let PhysicsModule = (function(){
     }
   }
 
-  function addToSpatialGrid(particleIndex, x, y) {
-    const gx = Math.floor(x / gridCellSize);
-    const gy = Math.floor(y / gridCellSize);
+  function addToSpatialGrid(particleIndex, x, y, cellSize) {
+    const gx = Math.floor(x / cellSize);
+    const gy = Math.floor(y / cellSize);
     if(gx >= 0 && gx < gridWidth && gy >= 0 && gy < gridHeight) {
       spatialGrid[gy * gridWidth + gx].push(particleIndex);
     }
@@ -793,17 +659,10 @@ let PhysicsModule = (function(){
   function init(count){
     Module.particleCount = count; 
     Module.particles = new Float32Array(count * 8);
-    const w = config.width, h = config.height, cx = w/2, margin = config.radius + 1;
+    const w = config.width, h = config.height, margin = config.radius + 1;
+    const cx = w * (config.wallPosition / 100);
     
-    initSpatialGrid(w, h);
-    
-    // Initialize QuadTree
-    quadTree = new QuadTree({
-      x: 0,
-      y: 0,
-      width: w,
-      height: h
-    }, 10, 5);
+    reinitGrid(w, h, config.gridSize);
     
     for(let i=0;i<count;i++){ 
       const idx=i*8; 
@@ -841,41 +700,34 @@ let PhysicsModule = (function(){
     const p = Module.particles;
     const n = Module.particleCount;
     const EPS = 1e-8;
+    const cellSize = cfg.gridSize;
 
-    // rebuild grid only if needed
     if (cfg.gravity || cfg.pressure) {
       clearSpatialGrid();
       for (let i = 0; i < n; i++) {
         const idx = i * 8;
         const x = p[idx], y = p[idx + 1];
-        if (!Number.isFinite(x) || !Number.isFinite(y)) continue; // skip corrupted particles
-        addToSpatialGrid(i, x, y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        addToSpatialGrid(i, x, y, cellSize);
       }
     }
 
-    // Determine force sampling fraction - use manual control if set, otherwise auto-scale
-    let forceFraction = cfg.forceSampling;
-    if (forceFraction >= 1.0) {
-      // Auto-scaling when set to 100%
-      if (n > 50000) forceFraction = 0.02;      // 1/50th for very high counts
-      else if (n > 20000) forceFraction = 0.025; // 1/40th for high counts  
-      else if (n > 10000) forceFraction = 0.05;  // 1/20 for medium counts
-    }
+    // Auto-scaling force sampling logic (no longer a slider)
+    let forceFraction = 1.0; // Default to 100%
+    if (n > 5000) forceFraction = 0.02;//5% sampling default for many particles
 
     const forceParticleCount = Math.max(1, Math.floor(n * forceFraction));
     const forceStep = Math.max(1, Math.floor(n / forceParticleCount));
     const invFraction = 1 / forceFraction;
     const exponent = cfg.gravityExponent;
-    const softening = 25; // prevents singularity at r=0
+    const softening = 25;
 	
-    // Rotate the starting offset to ensure all particles get updated eventually
     forceUpdateOffset = (forceUpdateOffset + 1) % forceStep;
 
     for (let i = 0; i < n; i++) {
       const idx = i * 8;
       let fx = 0, fy = 0;
 
-      // --- speed limit / drag (always applied - these are cheap) ---
       const vx0 = p[idx + 2], vy0 = p[idx + 3];
       const speed2 = vx0 * vx0 + vy0 * vy0;
       const maxSpeed2 = cfg.tunneling * cfg.tunneling;
@@ -893,21 +745,19 @@ let PhysicsModule = (function(){
         fy -= (p[idx + 3] / speed) * dragMag;
       }
 
-      // --- gravity / pressure using sampling (expensive forces only on subset) ---
       const shouldCalculateExpensiveForces = (cfg.gravity || cfg.pressure) && 
                                             ((i + forceUpdateOffset) % forceStep === 0);
       
       if (shouldCalculateExpensiveForces) {
         const x = p[idx], y = p[idx + 1];
         if (!Number.isFinite(x) || !Number.isFinite(y)) {
-          // don't let NaNs propagate forces
-          // (positions will be healed by wall constraints in updatePositions)
           p[idx + 2] = 0; p[idx + 3] = 0;
         } else {
-          const gx = Math.floor(x / gridCellSize);
-          const gy = Math.floor(y / gridCellSize);
-          if (Number.isFinite(gx) && Number.isFinite(gy)) { // guard NaN indices
-            const gravityRange = cfg.gravity ? 3 : 0;
+          const gx = Math.floor(x / cellSize);
+          const gy = Math.floor(y / cellSize);
+          if (Number.isFinite(gx) && Number.isFinite(gy)) {
+            // Use cfg.gravityDistance for gravity range
+            const gravityRange = cfg.gravity ? cfg.gravityDistance : 0;
             const pressureRange = cfg.pressure ? 1 : 0;
             const maxRange = Math.max(gravityRange, pressureRange);
 			let gravForce = 0;
@@ -916,34 +766,28 @@ let PhysicsModule = (function(){
                 const cellX = gx + dx;
                 const cellY = gy + dy;
                 if (cellX < 0 || cellX >= gridWidth || cellY < 0 || cellY >= gridHeight) continue;
-
                 const cell = spatialGrid[cellY * gridWidth + cellX];
-                if (!cell) continue; // cell can be undefined if grid got out of sync
-
+                if (!cell) continue;
                 const cellDist2 = dx * dx + dy * dy;
 				
                 for (let k = 0; k < cell.length; k++) {
                   const j = cell[k];
                   if (i === j) continue;
-
                   const jdx = j * 8;
                   const dxp = p[jdx] - x;
                   const dyp = p[jdx + 1] - y;
                   const dist2 = dxp * dxp + dyp * dyp;
-
-                  if(dist2 < 1) continue; // avoid singularity
-                  				
-                  // unit normal without creating NaNs
+                  if(dist2 < 1) continue;
                   const invDist = 1 / Math.sqrt(dist2);
                   const nx = dxp * invDist;
                   const ny = dyp * invDist;
+				  
+				  const softenedDist2 = dist2 + softening*softening;
 
-                  // Gravity (attractive) - compensate for sampling by scaling force
                   if (cfg.gravity && cellDist2 <= gravityRange * gravityRange) {
                     if (exponent == 2) {
-                      gravForce = (cfg.gravityStrength * invFraction) / dist2;
-					}else{
-					  const softenedDist2 = dist2 + softening*softening;
+                      gravForce = (cfg.gravityStrength * invFraction) / softenedDist2;
+					} else {
                       const distPow = Math.pow(softenedDist2, exponent / 2);
 					  gravForce = (cfg.gravityStrength * invFraction) / distPow;
 	                }
@@ -951,10 +795,8 @@ let PhysicsModule = (function(){
                     fy += ny * gravForce;
                   }
 
-                  // Pressure (repulsive, short range) - compensate for sampling by scaling force
                   if (cfg.pressure && cellDist2 <= pressureRange * pressureRange) {
                     const maxPressDist = p[idx + 7] * 8;
-                    // use dist via invDist without another sqrt
                     const dist = 1 / invDist;
                     if (dist < maxPressDist) {
                       const pressForce = (cfg.pressureStrength * invDist * invFraction * 0.6);
@@ -968,8 +810,6 @@ let PhysicsModule = (function(){
           }
         }
       }
-
-      // Final force application with sanity check
       if (!Number.isFinite(fx)) fx = 0;
       if (!Number.isFinite(fy)) fy = 0;
       p[idx + 2] += fx * dt;
@@ -977,37 +817,27 @@ let PhysicsModule = (function(){
     }
   }
 
-
-// Real-time temperature updates
   function updateParticleTemperatures(leftTemp, rightTemp) {
     if (!Module.ready) return;
     const p = Module.particles;
     const n = Module.particleCount;
-    const cx = config.width / 2;
+    const cx = config.width * (config.wallPosition / 100);
     
-    // Update velocities based on new temperatures
     for (let i = 0; i < n; i++) {
       const idx = i * 8;
       const x = p[idx];
       const isLeft = x < cx;
-      
-      // Get current speed
       const currentSpeed = Math.sqrt(p[idx + 2] * p[idx + 2] + p[idx + 3] * p[idx + 3]);
-      
-      // Calculate target speed from temperature
       const targetTemp = isLeft ? leftTemp : rightTemp;
       const targetSpeed = targetTemp * (Math.random() * 0.6 + 0.7) / 50;
       
-      // Smoothly adjust towards target speed (works for both increasing AND decreasing)
       if (currentSpeed > 0.1) {
         const speedRatio = targetSpeed / currentSpeed;
-        const adjustmentFactor = 0.2; // Increased for faster response to decreases
+        const adjustmentFactor = 0.2;
         const newSpeedRatio = 1 + (speedRatio - 1) * adjustmentFactor;
-        
         p[idx + 2] *= newSpeedRatio;
         p[idx + 3] *= newSpeedRatio;
       } else {
-        // If particle is nearly stationary, give it some random motion
         const ang = Math.random() * Math.PI * 2;
         p[idx + 2] = Math.cos(ang) * targetSpeed;
         p[idx + 3] = Math.sin(ang) * targetSpeed;
@@ -1019,35 +849,27 @@ let PhysicsModule = (function(){
     const p = Module.particles;
     const n = Module.particleCount;
     const w = cfg.width, h = cfg.height;
-    const cx = w / 2;
+    const cx = w * (cfg.wallPosition / 100);
     const pipeTop = h / 2 - (cfg.pipeHeight / 100) * h / 2;
     const pipeBottom = h / 2 + (cfg.pipeHeight / 100) * h / 2;
     const wallT = 10;
-
     const demonThresholdSq = cfg.demonSpeedThreshold * cfg.demonSpeedThreshold;
     
     for (let i = 0; i < n; i++) {
         const idx = i * 8;
         let x = p[idx], y = p[idx + 1];
         let vx = p[idx + 2], vy = p[idx + 3];
-        const r = p[idx + 7]/2; //wall collision radius
-
-        // Update position
+        const r = p[idx + 7]/2;
         x += vx * dt;
         y += vy * dt;
-
-        // Boundary collisions with restitution
-        const restitution = 1; // energy loss on wall collision
+        const restitution = 1;
         if (x - r < 0) { x = r; vx = Math.abs(vx) * restitution; }
         if (x + r > w) { x = w - r; vx = -Math.abs(vx) * restitution; }
         if (y - r < 0) { y = r; vy = Math.abs(vy) * restitution; }
         if (y + r > h) { y = h - r; vy = -Math.abs(vy) * restitution; }
 
-        // Center wall collision handling with Maxwell's Demon
         const leftWallEdge = cx - wallT/2;
         const rightWallEdge = cx + wallT/2;
-        
-        // Check if particle is crossing the center wall
         const isCrossingWall = (x > leftWallEdge && x < rightWallEdge) || 
                               (x + r > leftWallEdge && x < leftWallEdge) || 
                               (x - r < rightWallEdge && x > rightWallEdge);
@@ -1055,31 +877,20 @@ let PhysicsModule = (function(){
         if (isCrossingWall) {
             const withinPipe = cfg.pipeOpen && (y >= pipeTop && y <= pipeBottom);
             let shouldBounce = false;
-            
             if (cfg.maxwellDemon) {
-                // Maxwell's Demon is active - works regardless of pipe state
                 const speedSq = vx*vx + vy*vy;
                 const isMovingRight = vx > 0;
                 const isFastParticle = speedSq >= demonThresholdSq;
-                
                 if (isMovingRight && isFastParticle) {
-                    // Fast particle moving left->right: ALLOW and teleport a slow particle
-                    // Find a slow particle on the right side to teleport left
                     teleportSlowParticle(p, n, cx, demonThresholdSq, 'rightToLeft');
                 } else if (!isMovingRight && !isFastParticle) {
-                    // Slow particle moving right->left: ALLOW and teleport a fast particle  
-                    // Find a fast particle on the left side to teleport right
                     teleportFastParticle(p, n, cx, demonThresholdSq, 'leftToRight');
                 } else {
-                    // Other combinations: BOUNCE
                     shouldBounce = true;
                 }
             } else if (!withinPipe) {
-                // No demon and outside pipe opening: BOUNCE
                 shouldBounce = true;
             }
-            // If demon is off and within pipe: pass through freely
-            
             if (shouldBounce) {
                 if (x > leftWallEdge && x < rightWallEdge) {
                     const distToLeft = x - leftWallEdge;
@@ -1100,224 +911,141 @@ let PhysicsModule = (function(){
                 }
             }
         }
-
         p[idx] = x; p[idx + 1] = y;
         p[idx + 2] = vx; p[idx + 3] = vy;
     }
   }
 
-  // Optimized collision detection with three modes: SAP, Grid, and QuadTree
+  // HandleCollisions remains the same... (pasting for completeness of the block)
   const CollisionStats = { collisions:0, checks:0 };
-  
   function handleCollisions(cfg){
     const p = Module.particles; 
     const n = Module.particleCount; 
     CollisionStats.collisions = 0; 
     CollisionStats.checks = 0;
     
-    if(cfg.collisionMode === 'sap'){
-      handleSAPCollisions(cfg, p, n);
-    } else if(cfg.collisionMode === 'grid'){
-      handleGridCollisions(cfg, p, n);
-    } else if(cfg.collisionMode === 'quadtree'){
-      handleQuadTreeCollisions(cfg, p, n);
-    }
-    
-    Module.collisionStats = { collisions: CollisionStats.collisions, checks: CollisionStats.checks };
-  }
-
-  function handleSAPCollisions(cfg, p, n) {
-    // Pre-allocate sorted indices array
-    const idxs = new Uint32Array(n);
-    for(let i=0;i<n;i++) idxs[i]=i;
-    
-    // Use faster sorting for float32 positions
-    const positions = new Float32Array(n);
-    for(let i=0;i<n;i++) positions[i] = p[i*8];
-    
-    // Sort indices by x position
-    idxs.sort((a,b) => positions[a] - positions[b]);
-    
-    for(let i=0;i<n;i++){
-      const a = idxs[i]*8;
-      const ax = p[a], ay = p[a+1], ar = p[a+7];
+    if(cfg.useSAP){
+      const idxs = new Uint32Array(n);
+      for(let i=0;i<n;i++) idxs[i]=i;
+      const positions = new Float32Array(n);
+      for(let i=0;i<n;i++) positions[i] = p[i*8];
+      idxs.sort((a,b) => positions[a] - positions[b]);
       
-      // Early termination optimization
-      let collisionCount = 0;
-      const maxCollisionsPerParticle = 8; // limit collisions per particle
-      
-      for(let j=i+1;j<n && collisionCount < maxCollisionsPerParticle;j++){
-        const b = idxs[j]*8;
-        const bx = p[b];
-        if(bx - p[b+7] > ax + ar) break; // SAP early exit
+      for(let i=0;i<n;i++){
+        const a = idxs[i]*8;
+        const ax = p[a], ay = p[a+1], ar = p[a+7];
+        let collisionCount = 0;
+        const maxCollisionsPerParticle = 8;
         
-        CollisionStats.checks++;
-        const dx = bx - ax;
-        const dy = p[b+1] - ay;
-        const dist2 = dx*dx + dy*dy; // avoid sqrt
-        const minD = (ar + p[b+7])/2;
-        const minD2 = minD * minD;
-        
-        if(dist2 < minD2 && dist2 > 0.01){ // avoid division by zero
-          CollisionStats.collisions++;
-          collisionCount++;
-          resolveCollision(p, a, b, dx, dy, dist2, minD, cfg);
+        for(let j=i+1;j<n && collisionCount < maxCollisionsPerParticle;j++){
+          const b = idxs[j]*8;
+          const bx = p[b];
+          if(bx - p[b+7] > ax + ar) break;
+          CollisionStats.checks++;
+          const dx = bx - ax;
+          const dy = p[b+1] - ay;
+          const dist2 = dx*dx + dy*dy;
+          const minD = (ar + p[b+7])/2;
+          const minD2 = minD * minD;
+          
+          if(dist2 < minD2 && dist2 > 0.01){
+            CollisionStats.collisions++;
+            collisionCount++;
+            const dist = Math.sqrt(dist2);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const v1x = p[a+2], v1y = p[a+3];
+            const v2x = p[b+2], v2y = p[b+3];
+            const kx = v1x - v2x;
+            const ky = v1y - v2y;
+            const momentum = (nx * kx + ny * ky);
+            if(cfg.friction) {
+              const f = cfg.frictionCoeff;
+              p[a+2] = (v1x - momentum * nx) * f;
+              p[a+3] = (v1y - momentum * ny) * f;
+              p[b+2] = (v2x + momentum * nx) * f;
+              p[b+3] = (v2y + momentum * ny) * f;
+            } else {
+              p[a+2] = v1x - momentum * nx;
+              p[a+3] = v1y - momentum * ny;
+              p[b+2] = v2x + momentum * nx;
+              p[b+3] = v2y + momentum * ny;
+            }
+            const overlap = minD - dist;
+            const sep = Math.min(overlap * 0.6, minD * 0.2);
+            p[a] -= nx * sep;
+            p[a+1] -= ny * sep;
+            p[b] += nx * sep;
+            p[b+1] += ny * sep;
+          }
         }
       }
-    }
-  }
-
-  function handleGridCollisions(cfg, p, n) {
-    // Optimized grid collision detection
-    const cell = Math.max(8, cfg.radius*8); // smaller cells for better distribution
-    const gw = Math.ceil(cfg.width/cell);
-    const gh = Math.ceil(cfg.height/cell);
-    const grid = new Array(gw*gh);
-    
-    for(let i=0;i<grid.length;i++) grid[i] = [];
-    
-    // Build grid
-    for(let i=0;i<n;i++){
-      const idx=i*8;
-      const gx=Math.floor(p[idx]/cell);
-      const gy=Math.floor(p[idx+1]/cell);
-      if(gx>=0&&gx<gw&&gy>=0&&gy<gh) grid[gy*gw+gx].push(i);
-    }
-    
-    // Check collisions within cells
-    for(let g=0;g<grid.length;g++){
-      const cellArr=grid[g];
-      const cellSize = cellArr.length;
-      
-      // Skip very dense cells for performance
-      if(cellSize > 100) continue;
-      
-      for(let a=0;a<cellSize;a++){
-        for(let b=a+1;b<cellSize;b++){
-          const ai=cellArr[a]*8, bi=cellArr[b]*8;
-          CollisionStats.checks++;
-          
-          const dx=p[bi]-p[ai];
-          const dy=p[bi+1]-p[ai+1];
-          const dist2=dx*dx+dy*dy;
-          const minD=(p[ai+7]+p[bi+7])/2; //half radius
-          const minD2 = minD*minD;
-          
-          if(dist2<minD2 && dist2>0.01){
-            CollisionStats.collisions++;
-            resolveCollision(p, ai, bi, dx, dy, dist2, minD, cfg);
+    } else {
+      const cell = Math.max(8, cfg.radius*3);
+      const gw = Math.ceil(cfg.width/cell);
+      const gh = Math.ceil(cfg.height/cell);
+      const grid = new Array(gw*gh);
+      for(let i=0;i<grid.length;i++) grid[i] = [];
+      for(let i=0;i<n;i++){
+        const idx=i*8;
+        const gx=Math.floor(p[idx]/cell);
+        const gy=Math.floor(p[idx+1]/cell);
+        if(gx>=0&&gx<gw&&gy>=0&&gy<gh) grid[gy*gw+gx].push(i);
+      }
+      for(let g=0;g<grid.length;g++){
+        const cellArr=grid[g];
+        const cellSize = cellArr.length;
+        if(cellSize > 250) continue;
+        for(let a=0;a<cellSize;a++){
+          for(let b=a+1;b<cellSize;b++){
+            const ai=cellArr[a]*8, bi=cellArr[b]*8;
+            CollisionStats.checks++;
+            const dx=p[bi]-p[ai];
+            const dy=p[bi+1]-p[ai+1];
+            const dist2=dx*dx+dy*dy;
+            const minD=(p[ai+7]+p[bi+7])/2;
+            const minD2 = minD*minD;
+            if(dist2<minD2 && dist2>0.01){
+              CollisionStats.collisions++;
+              const dist = Math.sqrt(dist2);
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const v1x = p[ai+2], v1y = p[ai+3];
+              const v2x = p[bi+2], v2y = p[bi+3];
+              const kx = v1x - v2x;
+              const ky = v1y - v2y;
+              const momentum = (nx * kx + ny * ky);
+              if(cfg.friction) {
+                const f = cfg.frictionCoeff;
+                p[ai+2] = (v1x - momentum * nx) * f;
+                p[ai+3] = (v1y - momentum * ny) * f;
+                p[bi+2] = (v2x + momentum * nx) * f;
+                p[bi+3] = (v2y + momentum * ny) * f;
+              } else {
+                p[ai+2] = v1x - momentum * nx;
+                p[ai+3] = v1y - momentum * ny;
+                p[bi+2] = v2x + momentum * nx;
+                p[bi+3] = v2y + momentum * ny;
+              }
+              const overlap = minD - dist;
+              const sep = Math.min(overlap * 0.6, minD * 0.2);
+              p[ai] -= nx * sep;
+              p[ai+1] -= ny * sep;
+              p[bi] += nx * sep;
+              p[bi+1] += ny * sep;
+            }
           }
         }
       }
     }
+    Module.collisionStats = { collisions: CollisionStats.collisions, checks: CollisionStats.checks };
   }
 
-  function handleQuadTreeCollisions(cfg, p, n) {
-    // Clear and rebuild quadtree
-    quadTree.clear();
-    
-    // Insert all particles into quadtree
-    for(let i = 0; i < n; i++) {
-      const idx = i * 8;
-      const x = p[idx];
-      const y = p[idx + 1];
-      const r = p[idx + 7];
-      
-      // Create particle object for quadtree
-      const particle = {
-        x: x - r,
-        y: y - r, 
-        width: r * 2,
-        height: r * 2,
-        particleIndex: i
-      };
-      
-      quadTree.insert(particle);
-    }
-    
-    // Check collisions using quadtree
-    for(let i = 0; i < n; i++) {
-      const idx = i * 8;
-      const x = p[idx];
-      const y = p[idx + 1];
-      const r = p[idx + 7];
-      
-      // Query quadtree for potential collisions
-      const queryRect = {
-        x: x - r,
-        y: y - r,
-        width: r * 2,
-        height: r * 4
-      };
-      
-      const nearbyParticles = quadTree.query(queryRect);
-      
-      // Check actual collisions with nearby particles
-      for(let j = 0; j < nearbyParticles.length; j++) {
-        const otherIdx = nearbyParticles[j].particleIndex;
-        if(otherIdx <= i) continue; // avoid duplicate checks
-        
-        const bi = otherIdx * 8;
-        CollisionStats.checks++;
-        
-        const dx = p[bi] - p[idx];
-        const dy = p[bi + 1] - p[idx + 1];
-        const dist2 = dx * dx + dy * dy;
-        const minD = (p[idx + 7] + p[bi + 7]) / 2;
-        const minD2 = minD * minD;
-        
-        if(dist2 < minD2 && dist2 > 0.01) {
-          CollisionStats.collisions++;
-          resolveCollision(p, idx, bi, dx, dy, dist2, minD, cfg);
-        }
-      }
-    }
-  }
-
-  function resolveCollision(p, ai, bi, dx, dy, dist2, minD, cfg) {
-    const dist = Math.sqrt(dist2);
-    const nx = dx / dist;
-    const ny = dy / dist;
-    
-    // Optimized elastic collision
-    const m1 = 1, m2 = 1; // equal masses
-    const v1x = p[ai+2], v1y = p[ai+3];
-    const v2x = p[bi+2], v2y = p[bi+3];
-    
-    const kx = v1x - v2x;
-    const ky = v1y - v2y;
-    const momentum = (nx * kx + ny * ky); // simplified for equal masses
-    
-    if(cfg.friction) {
-      const f = cfg.frictionCoeff;
-      p[ai+2] = (v1x - momentum * nx) * f;
-      p[ai+3] = (v1y - momentum * ny) * f;
-      p[bi+2] = (v2x + momentum * nx) * f;
-      p[bi+3] = (v2y + momentum * ny) * f;
-    } else {
-      p[ai+2] = v1x - momentum * nx;
-      p[ai+3] = v1y - momentum * ny;
-      p[bi+2] = v2x + momentum * nx;
-      p[bi+3] = v2y + momentum * ny;
-    }
-    
-    // Optimized separation
-    const overlap = minD - dist;
-    const sep = Math.min(overlap * 0.6, minD * 0.2);
-    p[ai] -= nx * sep;
-    p[ai+1] -= ny * sep;
-    p[bi] += nx * sep;
-    p[bi+1] += ny * sep;
-  }
-
-  // Optimized color update with caching
   let lastColorUpdate = 0;
   function updateColors(){ 
-    // Update colors less frequently for better performance
     const now = performance.now();
-    if(now - lastColorUpdate < 20) return; // Update colors at most every 50ms
+    if(now - lastColorUpdate < 20) return;
     lastColorUpdate = now;
-    
     const p=Module.particles, n=Module.particleCount; 
     for(let i=0;i<n;i++){ 
       const idx=i*8; 
@@ -1335,6 +1063,7 @@ let PhysicsModule = (function(){
     init, 
     update, 
     updateParticleTemperatures,
+    reinitGrid: ()=>reinitGrid(config.width, config.height, config.gridSize), // Expose grid re-init
     get particles(){return Module.particles;}, 
     get particleCount(){return Module.particleCount;}, 
     get collisionStats(){return Module.collisionStats||{collisions:0,checks:0}}, 
@@ -1358,7 +1087,7 @@ function renderParticlesToWebGL(particles, count){
         const idx=i*8;
         const x = Math.floor(particles[idx]);
         const y = Math.floor(particles[idx+1]);
-		const r = Math.floor(particles[idx+7]);
+        const r = Math.floor(particles[idx+7]);
         
         if(x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
           const pixelIdx = (y * canvas.width + x) * 4;
@@ -1448,6 +1177,46 @@ function pushHistory(l, r){
   if(rightFull.length>maxFullHistory) rightFull.shift(); 
 }
 
+function drawWalls() {
+  const o = document.getElementById('overlay');
+  const ctx = o.getContext('2d');
+  const W = o.width, H = o.height;
+  const cx = W * (config.wallPosition / 100); // use wallPosition
+  const pipePct = config.pipeHeight * 0.01;
+  const pipeOpen = config.pipeOpen;   // true/false
+  const openH = Math.max(2, Math.floor(H * pipePct));
+  const wallThickness = Math.max(2, Math.floor(Math.min(W, H) * 0.003));
+
+  ctx.clearRect(0, 0, W, H);
+
+  // divider
+  ctx.strokeStyle = '#999'; // matches background
+
+  ctx.fillStyle   = '#ff4040';
+  ctx.lineWidth   = wallThickness;
+  ctx.beginPath();
+  ctx.moveTo(cx, 0);
+  ctx.lineTo(cx, H);
+  ctx.stroke();
+
+  if (pipeOpen && openH > 0) {
+    const y0 = Math.floor((H - openH) / 2);
+    const y1 = y0 + openH;
+
+    ctx.strokeStyle = '#0f0f0f'; // background
+    ctx.lineWidth = wallThickness * 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx, y0);
+    ctx.lineTo(cx, y1);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffeb3b';
+    ctx.fillRect(cx - wallThickness, y0 - wallThickness, wallThickness * 2, wallThickness);
+    ctx.fillRect(cx - wallThickness, y1, wallThickness * 2, wallThickness);
+  }
+}
+
+
 function drawMiniGraph(canvasEl, data, autoScale=true){ 
   const ctx = canvasEl.getContext('2d'); 
   const W=canvasEl.width, H=canvasEl.height; 
@@ -1471,16 +1240,42 @@ function drawMiniGraph(canvasEl, data, autoScale=true){
   ctx.stroke(); 
 }
 
+function colorStat(leftId, rightId, leftVal, rightVal) {
+  const leftEl = document.getElementById(leftId);
+  const rightEl = document.getElementById(rightId);
+
+  if (leftVal > rightVal) {
+    leftEl.style.color = "limegreen";
+    rightEl.style.color = "red";
+  } else if (rightVal > leftVal) {
+    rightEl.style.color = "limegreen";
+    leftEl.style.color = "red";
+  } else {
+    leftEl.style.color = "#ccc";
+    rightEl.style.color = "#ccc";
+  }
+}
+
+
 function updateStatsDOM(){ 
   document.getElementById('fps').textContent = Math.round(stats.fps); 
   document.getElementById('targetFps').textContent = config.uncapFps ? Math.round(targetFps) : '60';
   document.getElementById('collisionRate').textContent=Math.round(stats.collisionRate); 
   document.getElementById('collisionChecks').textContent=Math.round(stats.collisionChecks); 
+  document.getElementById('totalParticles').textContent=stats.totalParticles; // Now live
   document.getElementById('leftBoxTemp').textContent=stats.leftBoxTemp.toFixed(2); 
-  document.getElementById('rightBoxTemp').textContent=stats.rightBoxTemp.toFixed(2); 
-  
-  // Update graphs less frequently for better performance
-  if(Math.random() < 1) { // Update graphs only 100% of the time lol
+  document.getElementById('rightBoxTemp').textContent=stats.rightBoxTemp.toFixed(2);
+  // NEW STATS
+  document.getElementById('leftAvgSpeed').textContent=stats.leftAvgSpeed.toFixed(2);
+  document.getElementById('rightAvgSpeed').textContent=stats.rightAvgSpeed.toFixed(2);
+  document.getElementById('leftMaxSpeed').textContent=stats.leftMaxSpeed.toFixed(2);
+  document.getElementById('rightMaxSpeed').textContent=stats.rightMaxSpeed.toFixed(2);
+    // Compare all left/right stat pairs
+  colorStat("leftBoxTemp",   "rightBoxTemp",   stats.leftBoxTemp,   stats.rightBoxTemp);
+  colorStat("leftAvgSpeed",  "rightAvgSpeed",  stats.leftAvgSpeed,  stats.rightAvgSpeed);
+  colorStat("leftMaxSpeed",  "rightMaxSpeed",  stats.leftMaxSpeed,  stats.rightMaxSpeed);
+
+  if(Math.random() < 1) {
     drawMiniGraph(document.getElementById('leftTempRecentGraph'), leftRecent, true); 
     drawMiniGraph(document.getElementById('rightTempRecentGraph'), rightRecent, true); 
     drawMiniGraph(document.getElementById('leftTempFullGraph'), leftFull, false); 
@@ -1506,41 +1301,53 @@ setInterval(() => {
 // The NEW physics-only loop
 function physicsLoop() {
   if (!isRunning) return;
-  
-  physicsTicks++; // count one step
-
-  // Run the physics
+  physicsTicks++;
   PhysicsModule.update(config);
 
-  // This logic is now part of the physics loop
-  const particles = PhysicsModule.particles;
-  const count = PhysicsModule.particleCount;
-
-  // Compute temps and stats less frequently for better performance
   if (frameCount % 3 === 0) {
+    const particles = PhysicsModule.particles;
+    const count = PhysicsModule.particleCount;
     let leftSum = 0, leftCount = 0, rightSum = 0, rightCount = 0;
-    const cx = config.width / 2;
+    let leftSumSpeed = 0, rightSumSpeed = 0;
+    let leftMaxSpeed = 0, rightMaxSpeed = 0;
+    let validParticleCount = 0;
+    const cx = config.width * (config.wallPosition / 100);
 
     for (let i = 0; i < count; i++) {
       const idx = i * 8;
+      // Check for valid particles
+      if (!Number.isFinite(particles[idx])) continue;
+      validParticleCount++;
+      
       const sp2 = particles[idx + 2] * particles[idx + 2] + particles[idx + 3] * particles[idx + 3];
+      const speed = Math.sqrt(sp2);
+
       if (particles[idx] < cx) {
         leftSum += sp2;
+        leftSumSpeed += speed;
+        if (speed > leftMaxSpeed) leftMaxSpeed = speed;
         leftCount++;
       } else {
         rightSum += sp2;
+        rightSumSpeed += speed;
+        if (speed > rightMaxSpeed) rightMaxSpeed = speed;
         rightCount++;
       }
     }
 
     stats.leftBoxTemp = leftCount ? Math.sqrt(leftSum / leftCount) : 0;
     stats.rightBoxTemp = rightCount ? Math.sqrt(rightSum / rightCount) : 0;
+    stats.leftAvgSpeed = leftCount ? leftSumSpeed / leftCount : 0;
+    stats.rightAvgSpeed = rightCount ? rightSumSpeed / rightCount : 0;
+    stats.leftMaxSpeed = leftMaxSpeed;
+    stats.rightMaxSpeed = rightMaxSpeed;
+    stats.totalParticles = validParticleCount; // Update live count
+    
     pushHistory(stats.leftBoxTemp, stats.rightBoxTemp);
   }
 
   stats.collisionChecks = PhysicsModule.collisionStats ? PhysicsModule.collisionStats.checks : 0;
   stats.collisionRate = PhysicsModule.collisionStats ? PhysicsModule.collisionStats.collisions : 0;
-  stats.totalParticles = count;
 }
 
 
@@ -1567,8 +1374,11 @@ function mainLoop(ts) {
 
   // --- Physics update is REMOVED from here ---
 
-  // Render the latest state of the particles
-  renderParticlesToWebGL(PhysicsModule.particles, PhysicsModule.particleCount);
+// Render the latest state of the particles
+renderParticlesToWebGL(PhysicsModule.particles, PhysicsModule.particleCount);
+
+// Draw the overlay wall
+drawWalls();
 
   // Update UI less frequently
   if (frameCount % 5 === 0) {
@@ -1591,10 +1401,9 @@ function wireUI(){
   
   set('particleCount', v=>{ 
     config.particleCount=Number(v); 
-    document.getElementById('totalParticles').textContent=v; 
+    // This value is now updated live from the physics loop, not here
   }, v=>v);
   
-  // Real-time temperature updates
   set('leftTemp', v=> {
     config.leftTemp=Number(v);
     PhysicsModule.updateParticleTemperatures(config.leftTemp, config.rightTemp);
@@ -1615,28 +1424,56 @@ function wireUI(){
   }, v=>v+'px');
   set('pipeHeight', v=> config.pipeHeight=Number(v), v=>v+'%');
   set('substeps', v=> config.substeps=Math.max(1,Number(v)), v=>v);
-  set('tunneling', v=> config.tunneling=Number(v), v=>v);
   set('demonThreshold', v=> config.demonSpeedThreshold=Number(v), v=>v);
-  set('forceSampling', v=> config.forceSampling=Number(v), v=>(Number(v)>=1.0?'Auto':Math.round(v*100)+'%'));
   set('pressureStrength', v=> config.pressureStrength=Number(v), v=>v);
   set('dragCoeff', v=> config.dragCoeff=Number(v), v=>Number(v).toFixed(4));
   
   // Gravity controls
   set('gravityStrength', v=> config.gravityStrength=Number(v), v=>v);
   set('gravityExponent', v=> config.gravityExponent=Number(v), v=>Number(v).toFixed(1));
-  
-  // Collision Mode Button (cycles through SAP -> Grid -> QuadTree)
-  document.getElementById('collisionModeBtn').addEventListener('click', (e) => {
-    if (config.collisionMode === 'sap') {
-      config.collisionMode = 'grid';
-      e.target.textContent = 'Grid';
-    } else if (config.collisionMode === 'grid') {
-      config.collisionMode = 'quadtree';
-      e.target.textContent = 'QuadTree';
-    } else {
-      config.collisionMode = 'sap';
-      e.target.textContent = 'SAP';
+
+  // --- NEW SLIDERS ---
+  set('gravityDistance', v=> config.gravityDistance=Number(v), v=>v);
+  set('wallPosition', v => {
+  const newPos = Number(v);
+  const oldPos = config.wallPosition;
+  if (PhysicsModule.particles && oldPos !== newPos) {
+    const p = PhysicsModule.particles;
+    const n = PhysicsModule.particleCount;
+    const oldCx = config.width * (oldPos / 100);
+    const newCx = config.width * (newPos / 100);
+
+    for (let i = 0; i < n; i++) {
+      const idx = i * 8;
+      let x = p[idx];
+
+      if (x < oldCx) {
+        // Scale into new left region
+        const scale = newCx / oldCx;
+        p[idx] = x * scale;
+      } else {
+        // Scale into new right region
+        const oldRightWidth = config.width - oldCx;
+        const newRightWidth = config.width - newCx;
+        const rel = (x - oldCx) / oldRightWidth;
+        p[idx] = newCx + rel * newRightWidth;
+      }
     }
+  }
+  config.wallPosition = newPos;
+}, v => v + '%');
+
+  set('gridSize', v=> {
+      config.gridSize=Number(v);
+      if(PhysicsModule.ready()) PhysicsModule.reinitGrid();
+  }, v=>v+'px');
+
+  // --- REMOVED SLIDERS ---
+  // 'tunneling' (Max Speed) and 'forceSampling' are no longer wired to the UI.
+  
+  document.getElementById('collisionMode').addEventListener('change', (e)=>{ 
+    config.useSAP = e.target.checked; 
+    document.getElementById('collisionModeLabel').textContent = config.useSAP?'SAP':'Grid'; 
   });
   
   document.getElementById('gravityToggle').addEventListener('change', (e)=>{ 
@@ -1661,32 +1498,23 @@ function wireUI(){
     document.getElementById('maxwellLabel').textContent = config.maxwellDemon ? 'On' : 'Off';
   });
   
-  // MODIFIED Uncap FPS Toggle Logic
   document.getElementById('uncapFpsToggle').addEventListener('change', (e) => {
     config.uncapFps = e.target.checked;
     document.getElementById('uncapFpsLabel').textContent = config.uncapFps ? 'On' : 'Off';
-
-    // Clear any existing physics and adaptive loops
     if (physicsLoopId) clearInterval(physicsLoopId);
     if (adaptiveFpsIntervalId) clearInterval(adaptiveFpsIntervalId);
-
     if (config.uncapFps) {
-      // When uncapping, start a new setInterval for the physics
-      targetFps = 60; // Start at 60
-      
+      targetFps = 60;
       const adjustFps = () => {
-        if (isRunning && config.uncapFps && targetFps < 250) { // sim speeds up to full potential only when targetfps is >=150000 maybe because it stops this checking loop but idk
-            targetFps += 20; // Gradually increase the simulation speed by 20
-            
+        if (isRunning && config.uncapFps && targetFps < 240) { 
+            targetFps += 10;
             clearInterval(physicsLoopId);
             physicsLoopId = setInterval(physicsLoop, 1000 / targetFps);
         }
       };
-      
       physicsLoopId = setInterval(physicsLoop, 1000 / targetFps);
-      adaptiveFpsIntervalId = setInterval(adjustFps, 100); // Check to speed up every 100ms
+      adaptiveFpsIntervalId = setInterval(adjustFps, 100);
     } else {
-      // Capped FPS: run physics at a fixed 60Hz.
       targetFps = 60;
       physicsLoopId = setInterval(physicsLoop, 1000 / 60);
     }
@@ -1694,7 +1522,7 @@ function wireUI(){
 
   document.getElementById('resetBtn').addEventListener('click', ()=>{ 
     PhysicsModule.init(config.particleCount);
-    resetGraphs(); // Reset all graphs when reset is pressed
+    resetGraphs();
   });
   document.getElementById('pauseBtn').addEventListener('click', (e)=>{ 
     isRunning = !isRunning; 
@@ -1704,7 +1532,6 @@ function wireUI(){
     config.pipeOpen = !config.pipeOpen; 
     e.target.textContent = config.pipeOpen ? 'Close Pipe' : 'Open Pipe';
   });
-
 }
 
 wireUI();
