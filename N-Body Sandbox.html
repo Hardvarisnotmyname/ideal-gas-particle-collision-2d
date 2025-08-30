@@ -220,7 +220,7 @@ pointer-events: none; /* don't block mouse */
 <div class="container">
   <div class="controls">
     <div class="control-group">
-      <label class="tooltip" data-tooltip="Controls total no of particles, use grid mode if too many particles are lagging the sim">Total Particles</label>
+      <label class="tooltip" data-tooltip="Controls total no of particles. Updates in real-time without reset. Use grid mode if too many particles are lagging the sim">Total Particles</label>
       <input id="particleCount" type="range" min="250" max="100000" step="250" value="10000" >
       <div class="value" id="particleCountValue">10000</div>
     </div>
@@ -300,6 +300,20 @@ pointer-events: none; /* don't block mouse */
       </div>
     </div>
     <div class="control-group">
+      <label class="tooltip" data-tooltip="Particles move inward or outward from mouse when clicking and holding">Divergence</label>
+      <div class="switch">
+        <input type="checkbox" id="divergenceToggle" checked>
+        <div id="divergenceLabel" style="color:#22c55e">Inward</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Particles rotate clockwise or anticlockwise around mouse when clicking and holding">Curl</label>
+      <div class="switch">
+        <input type="checkbox" id="curlToggle" checked>
+        <div id="curlLabel" style="color:#22c55e">Clockwise</div>
+      </div>
+    </div>
+    <div class="control-group">
       <label class="tooltip" data-tooltip="SAP for accuracy, Grid for speed and 3d effect with large radii particles">Collision Mode</label>
       <div class="switch">
         <input type="checkbox" id="collisionMode" checked="">
@@ -357,6 +371,7 @@ pointer-events: none; /* don't block mouse */
       <div class="stats" id="stats">
         <div class="stat-row"><span>FPS:</span><span id="fps">60</span></div>
         <div class="stat-row"><span>Target FPS:</span><span id="targetFps">60</span></div>
+        <div class="stat-row"><span>Render:</span><span id="renderMode">Unknown</span></div>
         <div class="stat-row"><span>Total Particles:</span><span id="totalParticles">10000</span></div>
         <div class="stat-row"><span>Collisions/sec:</span><span id="collisionRate">124</span></div>
         <div class="stat-row"><span>Collision Checks:</span><span id="collisionChecks">9074</span></div>
@@ -483,9 +498,14 @@ const config = {
   gridSize: 20,
   gravityDistance: 3,
   wallPosition: 50, // Percentage (0-100)
+  divergenceInward: true, // true = inward, false = outward
+  curlClockwise: true, // true = clockwise, false = anticlockwise
 };
 
 let canvas = document.getElementById('canvas');
+let overlay = document.getElementById('overlay');
+let renderer = null; // Class-based renderer (WebGL + 2D fallback)
+let graphManager = null; // Class-based graphs/history manager
 let gl = null;
 let program = null;
 let positionBuffer, colorBuffer, radiusBuffer;
@@ -502,25 +522,22 @@ let leftRecent = [];
 let rightRecent = [];
 
 // Stats
-const stats = { fps:0, collisionRate:0, collisionChecks:0, leftBoxTemp:0, rightBoxTemp:0, totalParticles:0 };
+const stats = { fps:0, collisionRate:0, collisionChecks:0, leftBoxTemp:0, rightBoxTemp:0, totalParticles:0, leftAvgSpeed:0, rightAvgSpeed:0, leftMaxSpeed:0, rightMaxSpeed:0 };
+
+// Mouse interaction state
+let mouseState = {
+  isDown: false,
+  x: 0,
+  y: 0,
+  forceStrength: 100 // Strength of the mouse force effect
+};
 
 // FPS targeting variables
 let targetFps = 60;
 
 // ---------- Graph reset function ----------
 function resetGraphs() {
-  leftFull = [];
-  rightFull = [];
-  leftRecent = [];
-  rightRecent = [];
-  
-  // Clear all graph canvases
-  const graphIds = ['leftTempRecentGraph', 'rightTempRecentGraph', 'leftTempFullGraph', 'rightTempFullGraph'];
-  graphIds.forEach(id => {
-    const canvas = document.getElementById(id);
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
+  if (graphManager) graphManager.reset();
 }
 
 // ---------- Utilities ----------
@@ -534,6 +551,217 @@ function hslToRgb(h,s,l){ // h in [0,1]
   }
   return [r,g,b];
 }
+
+// ---------- Class-based Architecture: Renderer, GraphManager, and Stubs ----------
+class Renderer {
+  constructor(canvas, overlayCanvas, cfg) {
+    this.canvas = canvas;
+    this.overlay = overlayCanvas;
+    this.config = cfg;
+    this.gl = null;
+    this.program = null;
+    this.buffers = { pos: null, col: null, rad: null };
+    this.locations = { pos: null, col: null, rad: null, res: null, pr: null };
+    this.tmpPos = new Float32Array(0);
+    this.tmpCols = new Float32Array(0);
+    this.tmpRads = new Float32Array(0);
+    this.mode = 'Canvas2D';
+    this.isWebGL2 = false;
+    this.init();
+  }
+  _compileOrFallback(gl, vsSource, fsSource) {
+    const vs = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs, vsSource); gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) { return null; }
+    const fs = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs, fsSource); gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) { return null; }
+    const prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { return null; }
+    return prog;
+  }
+  init() {
+    // Prefer high-performance GPU and disable antialias for speed
+    this.gl = this.canvas.getContext('webgl2', { antialias: false, powerPreference: 'high-performance' })
+           || this.canvas.getContext('webgl');
+    const gl = this.gl;
+    if (!gl) { console.warn('WebGL unavailable – falling back to 2D render.'); this.mode = 'Canvas2D'; return; }
+
+    this.isWebGL2 = (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext);
+
+    // WebGL2 shaders
+    const v300 = `#version 300 es
+      in vec2 a_position; in vec3 a_color; in float a_radius;
+      uniform vec2 u_resolution; uniform float u_pixelRatio;
+      out vec3 v_color;
+      void main(){
+        vec2 pos = ((a_position / u_resolution) * 2.0 - 1.0) * vec2(1.0, -1.0);
+        gl_Position = vec4(pos, 0, 1);
+        gl_PointSize = a_radius * 1.0 * u_pixelRatio;
+        v_color = a_color;
+      }`;
+    const f300 = `#version 300 es
+      precision mediump float; in vec3 v_color; out vec4 outColor;
+      void main(){ vec2 c = gl_PointCoord - vec2(0.5); float d = length(c);
+        if(d>0.5) discard; float alpha = 1.0 - smoothstep(0.3,0.5,d);
+        outColor = vec4(v_color, alpha);
+      }`;
+
+    // WebGL1 shaders
+    const v100 = `attribute vec2 a_position; attribute vec3 a_color; attribute float a_radius;
+      uniform vec2 u_resolution; uniform float u_pixelRatio; varying vec3 v_color;
+      void main(){ vec2 pos = ((a_position / u_resolution) * 2.0 - 1.0) * vec2(1.0, -1.0);
+        gl_Position = vec4(pos, 0.0, 1.0); gl_PointSize = a_radius * 1.0 * u_pixelRatio; v_color = a_color; }`;
+    const f100 = `precision mediump float; varying vec3 v_color;
+      void main(){ vec2 c = gl_PointCoord - vec2(0.5); float d = length(c);
+        if (d > 0.5) discard; float alpha = 1.0 - smoothstep(0.3,0.5,d); gl_FragColor = vec4(v_color, alpha); }`;
+
+    // Try WebGL2 first, then fallback to WebGL1
+    if (this.isWebGL2) {
+      this.program = this._compileOrFallback(gl, v300, f300);
+      if (this.program) { this.mode = 'WebGL2'; }
+    }
+    if (!this.program) {
+      if (!this.isWebGL2) { this.mode = 'WebGL1'; }
+      this.program = this._compileOrFallback(gl, v100, f100);
+      if (!this.program) {
+        console.warn('Shader compile/link failed – falling back to Canvas2D.');
+        this.gl = null; this.mode = 'Canvas2D'; return;
+      }
+    }
+
+    this.buffers.pos = gl.createBuffer();
+    this.buffers.col = gl.createBuffer();
+    this.buffers.rad = gl.createBuffer();
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(0.05, 0.05, 0.05, 1);
+
+    this.locations.pos = gl.getAttribLocation(this.program,'a_position');
+    this.locations.col = gl.getAttribLocation(this.program,'a_color');
+    this.locations.rad = gl.getAttribLocation(this.program,'a_radius');
+    this.locations.res = gl.getUniformLocation(this.program,'u_resolution');
+    this.locations.pr  = gl.getUniformLocation(this.program,'u_pixelRatio');
+  }
+  getRenderMode() { return this.gl ? this.mode : 'Canvas2D'; }
+  _ensureTmp(count) {
+    if (this.tmpPos.length !== count * 2) { this.tmpPos = new Float32Array(count * 2); }
+    if (this.tmpCols.length !== count * 3) { this.tmpCols = new Float32Array(count * 3); }
+    if (this.tmpRads.length !== count) { this.tmpRads = new Float32Array(count); }
+  }
+  resize() {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.floor(rect.width * dpr);
+    const height = Math.floor(rect.height * dpr);
+
+    this.canvas.width = width; this.canvas.height = height;
+    this.canvas.style.width = rect.width + 'px'; this.canvas.style.height = rect.height + 'px';
+
+    this.overlay.width = width; this.overlay.height = height;
+    this.overlay.style.width = this.canvas.style.width; this.overlay.style.height = this.canvas.style.height;
+
+    this.config.width = width; this.config.height = height;
+    if (this.gl) this.gl.viewport(0, 0, width, height);
+
+    this.drawWalls();
+  }
+  render(particles, count) {
+    if (!particles || count <= 0) return;
+
+    if (!this.gl) {
+      // 2D fallback rendering
+      const ctx = this.canvas.getContext('2d');
+      ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < count; i++) {
+        const idx=i*8;
+        const rgb=[particles[idx+4]*255,particles[idx+5]*255,particles[idx+6]*255];
+        ctx.fillStyle = `rgb(${rgb[0]|0},${rgb[1]|0},${rgb[2]|0})`;
+        ctx.beginPath(); ctx.arc(particles[idx],particles[idx+1],particles[idx+7],0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      return;
+    }
+
+    const gl = this.gl;
+    this._ensureTmp(count);
+    const pos = this.tmpPos, cols = this.tmpCols, rads = this.tmpRads;
+    for (let i = 0; i < count; i++) {
+      const idx = i*8, i2=i*2, i3=i*3;
+      pos[i2] = particles[idx]; pos[i2+1] = particles[idx+1];
+      cols[i3] = particles[idx+4]; cols[i3+1] = particles[idx+5]; cols[i3+2] = particles[idx+6];
+      rads[i] = particles[idx+7];
+    }
+
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(this.program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STREAM_DRAW);
+    gl.enableVertexAttribArray(this.locations.pos); gl.vertexAttribPointer(this.locations.pos,2,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.col); gl.bufferData(gl.ARRAY_BUFFER, cols, gl.STREAM_DRAW);
+    gl.enableVertexAttribArray(this.locations.col); gl.vertexAttribPointer(this.locations.col,3,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.rad); gl.bufferData(gl.ARRAY_BUFFER, rads, gl.STREAM_DRAW);
+    gl.enableVertexAttribArray(this.locations.rad); gl.vertexAttribPointer(this.locations.rad,1,gl.FLOAT,false,0,0);
+    gl.uniform2f(this.locations.res, this.config.width, this.config.height);
+    gl.uniform1f(this.locations.pr, window.devicePixelRatio || 1);
+    gl.drawArrays(gl.POINTS, 0, count);
+  }
+  drawWalls() {
+    const ctx = this.overlay.getContext('2d');
+    const W = this.overlay.width, H = this.overlay.height;
+    const cx = W * (this.config.wallPosition / 100);
+    const pipePct = this.config.pipeHeight * 0.01;
+    const pipeOpen = this.config.pipeOpen;
+    const openH = Math.max(2, Math.floor(H * pipePct));
+    const wallThickness = Math.max(2, Math.floor(Math.min(W, H) * 0.003));
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = '#999';
+    ctx.fillStyle   = '#ff4040';
+    ctx.lineWidth   = wallThickness;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+
+    if (pipeOpen && openH > 0) {
+      const y0 = Math.floor((H - openH) / 2);
+      const y1 = y0 + openH;
+      ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = wallThickness * 1.8;
+      ctx.beginPath(); ctx.moveTo(cx, y0); ctx.lineTo(cx, y1); ctx.stroke();
+      ctx.fillStyle = '#ffeb3b';
+      ctx.fillRect(cx - wallThickness, y0 - wallThickness, wallThickness * 2, wallThickness);
+      ctx.fillRect(cx - wallThickness, y1, wallThickness * 2, wallThickness);
+    }
+  }
+}
+
+class GraphManager {
+  constructor() {
+    this.leftFull = []; this.rightFull = [];
+    this.leftRecent = []; this.rightRecent = [];
+  }
+  reset() {
+    this.leftFull = []; this.rightFull = [];
+    this.leftRecent = []; this.rightRecent = [];
+    const ids = ['leftTempRecentGraph','rightTempRecentGraph','leftTempFullGraph','rightTempFullGraph'];
+    ids.forEach(id => { const c = document.getElementById(id); if (c) c.getContext('2d').clearRect(0,0,c.width,c.height); });
+  }
+  pushHistory(l, r) {
+    this.leftRecent.push(l); this.rightRecent.push(r);
+    this.leftFull.push(l); this.rightFull.push(r);
+    if (this.leftRecent.length > recentPoints) this.leftRecent.shift();
+    if (this.rightRecent.length > recentPoints) this.rightRecent.shift();
+    if (this.leftFull.length > maxFullHistory) this.leftFull.shift();
+    if (this.rightFull.length > maxFullHistory) this.rightFull.shift();
+  }
+  drawAll() {
+    drawMiniGraph(document.getElementById('leftTempRecentGraph'), this.leftRecent, true);
+    drawMiniGraph(document.getElementById('rightTempRecentGraph'), this.rightRecent, true);
+    drawMiniGraph(document.getElementById('leftTempFullGraph'), this.leftFull, false);
+    drawMiniGraph(document.getElementById('rightTempFullGraph'), this.rightFull, false);
+  }
+}
+
+// Future-friendly stubs to enable easy QoL and presets later
+class PresetManager { getPresets(){ return []; } loadPreset(name){ /* hook up later */ } }
+class SaveLoadManager { saveConfig(cfg){ /* hook up later */ } loadConfig(obj){ /* hook up later */ } }
 
 // ---------- WebGL setup ----------
 function initWebGL(){
@@ -567,24 +795,12 @@ function initWebGL(){
   return true;
 }
 
-function resize(){
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = Math.floor(rect.width * devicePixelRatio);
-  canvas.height = Math.floor(rect.height * devicePixelRatio);
-  canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
-  config.width = canvas.width; config.height = canvas.height;
-  if(gl) gl.viewport(0,0,canvas.width,canvas.height);
-  
-  const overlay = document.getElementById('overlay');
-  overlay.width  = canvas.width;
-  overlay.height = canvas.height;
-  overlay.style.width  = canvas.style.width;
-  overlay.style.height = canvas.style.height;
-  drawWalls();
-}
-window.addEventListener('resize',()=>{ resize(); });
+function resize(){ if (renderer) renderer.resize(); }
+window.addEventListener('resize', () => { if (renderer) renderer.resize(); });
+// Instantiate managers (class-based) and size once
+renderer = new Renderer(canvas, document.getElementById('overlay'), config);
+graphManager = new GraphManager();
 resize();
-initWebGL();
 
 // ---------- Optimized Physics Module ----------
 let PhysicsModule = (function(){
@@ -656,6 +872,41 @@ let PhysicsModule = (function(){
     }
   }
 
+  function updateParticleCount(newCount) {
+    if (newCount === Module.particleCount) return;
+    const oldCount = Module.particleCount;
+    const newParticles = new Float32Array(newCount * 8);
+    const copyCount = Math.min(newCount, oldCount);
+    
+    if (oldCount > 0 && Module.particles) {
+      for (let i = 0; i < copyCount * 8; i++) {
+        newParticles[i] = Module.particles[i];
+      }
+    }
+    
+    if (newCount > oldCount) {
+      const w = config.width, h = config.height, margin = config.radius + 1;
+      const cx = w * (config.wallPosition / 100);
+      for (let i = oldCount; i < newCount; i++) {
+        const idx = i * 8;
+        const isLeft = (i % 2 === 0);
+        const bxMin = isLeft ? margin : cx + margin;
+        const bxMax = isLeft ? cx - margin : w - margin;
+        newParticles[idx] = Math.random() * (bxMax - bxMin) + bxMin;
+        newParticles[idx + 1] = Math.random() * (h - 2 * margin) + margin;
+        const speed = (isLeft ? config.leftTemp : config.rightTemp) * (Math.random() * 0.6 + 0.7) / 50;
+        const ang = Math.random() * Math.PI * 2;
+        newParticles[idx + 2] = Math.cos(ang) * speed;
+        newParticles[idx + 3] = Math.sin(ang) * speed;
+        newParticles[idx + 7] = config.radius;
+      }
+    }
+    
+    Module.particles = newParticles;
+    Module.particleCount = newCount;
+    updateColors();
+  }
+
   function init(count){
     Module.particleCount = count; 
     Module.particles = new Float32Array(count * 8);
@@ -701,6 +952,53 @@ let PhysicsModule = (function(){
     const n = Module.particleCount;
     const EPS = 1e-8;
     const cellSize = cfg.gridSize;
+    
+    // Apply mouse forces if mouse is down
+    if (mouseState.isDown) {
+      const mouseX = mouseState.x;
+      const mouseY = mouseState.y;
+      const forceStrength = mouseState.forceStrength;
+      
+      for (let i = 0; i < n; i++) {
+        const idx = i * 8;
+        const px = p[idx];
+        const py = p[idx + 1];
+        
+        const dx = px - mouseX;
+        const dy = py - mouseY;
+        const dist2 = dx * dx + dy * dy;
+        
+        if (dist2 > 1 && dist2 < 10000) { // Effect radius ~100px
+          const dist = Math.sqrt(dist2);
+          const nx = dx / dist;
+          const ny = dy / dist;
+          
+          // Divergence force (radial)
+          let radialForce = 0;
+          if (cfg.divergenceInward) {
+            radialForce = -forceStrength / dist; // Inward (negative = towards mouse)
+          } else {
+            radialForce = forceStrength / dist; // Outward (positive = away from mouse)
+          }
+          
+          // Curl force (tangential)
+          let tangentX = -ny; // Perpendicular to radial
+          let tangentY = nx;
+          if (!cfg.curlClockwise) {
+            tangentX = ny; // Reverse for anticlockwise
+            tangentY = -nx;
+          }
+          const curlForce = forceStrength / dist;
+          
+          // Combine forces
+          const fx = nx * radialForce + tangentX * curlForce * 0.5;
+          const fy = ny * radialForce + tangentY * curlForce * 0.5;
+          
+          p[idx + 2] += fx * dt * 0.1; // Scale down for reasonable effect
+          p[idx + 3] += fy * dt * 0.1;
+        }
+      }
+    }
 
     if (cfg.gravity || cfg.pressure) {
       clearSpatialGrid();
@@ -841,6 +1139,52 @@ let PhysicsModule = (function(){
         const ang = Math.random() * Math.PI * 2;
         p[idx + 2] = Math.cos(ang) * targetSpeed;
         p[idx + 3] = Math.sin(ang) * targetSpeed;
+      }
+    }
+  }
+
+  // New: update only left or only right side temperatures (for independent sliders)
+  function updateLeftParticleTemperatures(leftTemp) {
+    if (!Module.ready) return;
+    const p = Module.particles; const n = Module.particleCount;
+    const cx = config.width * (config.wallPosition / 100);
+    for (let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const x = p[idx];
+      if (x < cx) {
+        const currentSpeed = Math.sqrt(p[idx + 2] * p[idx + 2] + p[idx + 3] * p[idx + 3]);
+        const targetSpeed = leftTemp * (Math.random() * 0.6 + 0.7) / 50;
+        if (currentSpeed > 0.1) {
+          const speedRatio = targetSpeed / currentSpeed;
+          const newSpeedRatio = 1 + (speedRatio - 1) * 0.2;
+          p[idx + 2] *= newSpeedRatio; p[idx + 3] *= newSpeedRatio;
+        } else {
+          const ang = Math.random() * Math.PI * 2;
+          p[idx + 2] = Math.cos(ang) * targetSpeed;
+          p[idx + 3] = Math.sin(ang) * targetSpeed;
+        }
+      }
+    }
+  }
+  function updateRightParticleTemperatures(rightTemp) {
+    if (!Module.ready) return;
+    const p = Module.particles; const n = Module.particleCount;
+    const cx = config.width * (config.wallPosition / 100);
+    for (let i = 0; i < n; i++) {
+      const idx = i * 8;
+      const x = p[idx];
+      if (x >= cx) {
+        const currentSpeed = Math.sqrt(p[idx + 2] * p[idx + 2] + p[idx + 3] * p[idx + 3]);
+        const targetSpeed = rightTemp * (Math.random() * 0.6 + 0.7) / 50;
+        if (currentSpeed > 0.1) {
+          const speedRatio = targetSpeed / currentSpeed;
+          const newSpeedRatio = 1 + (speedRatio - 1) * 0.2;
+          p[idx + 2] *= newSpeedRatio; p[idx + 3] *= newSpeedRatio;
+        } else {
+          const ang = Math.random() * Math.PI * 2;
+          p[idx + 2] = Math.cos(ang) * targetSpeed;
+          p[idx + 3] = Math.sin(ang) * targetSpeed;
+        }
       }
     }
   }
@@ -1044,7 +1388,7 @@ let PhysicsModule = (function(){
   let lastColorUpdate = 0;
   function updateColors(){ 
     const now = performance.now();
-    if(now - lastColorUpdate < 20) return;
+    if(now - lastColorUpdate < 33) return; // optimize: update colors ~30fps to reduce overhead
     lastColorUpdate = now;
     const p=Module.particles, n=Module.particleCount; 
     for(let i=0;i<n;i++){ 
@@ -1063,6 +1407,9 @@ let PhysicsModule = (function(){
     init, 
     update, 
     updateParticleTemperatures,
+    updateLeftParticleTemperatures,
+    updateRightParticleTemperatures,
+    updateParticleCount,
     reinitGrid: ()=>reinitGrid(config.width, config.height, config.gridSize), // Expose grid re-init
     get particles(){return Module.particles;}, 
     get particleCount(){return Module.particleCount;}, 
@@ -1167,14 +1514,7 @@ function renderParticlesToWebGL(particles, count){
 
 // ---------- UI helpers & graphs ----------
 function pushHistory(l, r){ 
-  leftRecent.push(l); 
-  rightRecent.push(r); 
-  leftFull.push(l); 
-  rightFull.push(r); 
-  if(leftRecent.length>recentPoints) leftRecent.shift(); 
-  if(rightRecent.length>recentPoints) rightRecent.shift(); 
-  if(leftFull.length>maxFullHistory) leftFull.shift(); 
-  if(rightFull.length>maxFullHistory) rightFull.shift(); 
+  if (graphManager) graphManager.pushHistory(l, r);
 }
 
 function drawWalls() {
@@ -1263,23 +1603,21 @@ function updateStatsDOM(){
   document.getElementById('collisionRate').textContent=Math.round(stats.collisionRate); 
   document.getElementById('collisionChecks').textContent=Math.round(stats.collisionChecks); 
   document.getElementById('totalParticles').textContent=stats.totalParticles; // Now live
-  document.getElementById('leftBoxTemp').textContent=stats.leftBoxTemp.toFixed(2); 
-  document.getElementById('rightBoxTemp').textContent=stats.rightBoxTemp.toFixed(2);
+  const rm = document.getElementById('renderMode'); if (rm && renderer) rm.textContent = renderer.getRenderMode();
+  document.getElementById('leftBoxTemp').textContent=(stats.leftBoxTemp || 0).toFixed(2); 
+  document.getElementById('rightBoxTemp').textContent=(stats.rightBoxTemp || 0).toFixed(2);
   // NEW STATS
-  document.getElementById('leftAvgSpeed').textContent=stats.leftAvgSpeed.toFixed(2);
-  document.getElementById('rightAvgSpeed').textContent=stats.rightAvgSpeed.toFixed(2);
-  document.getElementById('leftMaxSpeed').textContent=stats.leftMaxSpeed.toFixed(2);
-  document.getElementById('rightMaxSpeed').textContent=stats.rightMaxSpeed.toFixed(2);
+  document.getElementById('leftAvgSpeed').textContent=(stats.leftAvgSpeed || 0).toFixed(2);
+  document.getElementById('rightAvgSpeed').textContent=(stats.rightAvgSpeed || 0).toFixed(2);
+  document.getElementById('leftMaxSpeed').textContent=(stats.leftMaxSpeed || 0).toFixed(2);
+  document.getElementById('rightMaxSpeed').textContent=(stats.rightMaxSpeed || 0).toFixed(2);
     // Compare all left/right stat pairs
   colorStat("leftBoxTemp",   "rightBoxTemp",   stats.leftBoxTemp,   stats.rightBoxTemp);
   colorStat("leftAvgSpeed",  "rightAvgSpeed",  stats.leftAvgSpeed,  stats.rightAvgSpeed);
   colorStat("leftMaxSpeed",  "rightMaxSpeed",  stats.leftMaxSpeed,  stats.rightMaxSpeed);
 
   if(Math.random() < 1) {
-    drawMiniGraph(document.getElementById('leftTempRecentGraph'), leftRecent, true); 
-    drawMiniGraph(document.getElementById('rightTempRecentGraph'), rightRecent, true); 
-    drawMiniGraph(document.getElementById('leftTempFullGraph'), leftFull, false); 
-    drawMiniGraph(document.getElementById('rightTempFullGraph'), rightFull, false);
+    if (graphManager) graphManager.drawAll();
   }
 }
 
@@ -1375,10 +1713,10 @@ function mainLoop(ts) {
   // --- Physics update is REMOVED from here ---
 
 // Render the latest state of the particles
-renderParticlesToWebGL(PhysicsModule.particles, PhysicsModule.particleCount);
+renderer.render(PhysicsModule.particles, PhysicsModule.particleCount);
 
 // Draw the overlay wall
-drawWalls();
+renderer.drawWalls();
 
   // Update UI less frequently
   if (frameCount % 5 === 0) {
@@ -1401,16 +1739,18 @@ function wireUI(){
   
   set('particleCount', v=>{ 
     config.particleCount=Number(v); 
-    // This value is now updated live from the physics loop, not here
+    if(PhysicsModule.ready()) {
+      PhysicsModule.updateParticleCount(config.particleCount);
+    }
   }, v=>v);
   
   set('leftTemp', v=> {
     config.leftTemp=Number(v);
-    PhysicsModule.updateParticleTemperatures(config.leftTemp, config.rightTemp);
+    PhysicsModule.updateLeftParticleTemperatures(config.leftTemp);
   }, v=>v);
   set('rightTemp', v=> {
     config.rightTemp=Number(v);
-    PhysicsModule.updateParticleTemperatures(config.leftTemp, config.rightTemp);
+    PhysicsModule.updateRightParticleTemperatures(config.rightTemp);
   }, v=>v);
   
   set('radius', v=> { 
@@ -1519,6 +1859,30 @@ function wireUI(){
       physicsLoopId = setInterval(physicsLoop, 1000 / 60);
     }
   });
+  
+  document.getElementById('divergenceToggle').addEventListener('change', (e) => {
+    config.divergenceInward = e.target.checked;
+    const label = document.getElementById('divergenceLabel');
+    if (config.divergenceInward) {
+      label.textContent = 'Inward';
+      label.style.color = '#22c55e';
+    } else {
+      label.textContent = 'Outward';
+      label.style.color = '#3b82f6';
+    }
+  });
+  
+  document.getElementById('curlToggle').addEventListener('change', (e) => {
+    config.curlClockwise = e.target.checked;
+    const label = document.getElementById('curlLabel');
+    if (config.curlClockwise) {
+      label.textContent = 'Clockwise';
+      label.style.color = '#22c55e';
+    } else {
+      label.textContent = 'Anticlockwise';
+      label.style.color = '#facc15';
+    }
+  });
 
   document.getElementById('resetBtn').addEventListener('click', ()=>{ 
     PhysicsModule.init(config.particleCount);
@@ -1533,6 +1897,58 @@ function wireUI(){
     e.target.textContent = config.pipeOpen ? 'Close Pipe' : 'Open Pipe';
   });
 }
+
+// Mouse event handlers for particle interaction
+canvas.addEventListener('mousedown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  mouseState.isDown = true;
+  mouseState.x = (e.clientX - rect.left) * dpr;
+  mouseState.y = (e.clientY - rect.top) * dpr;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (mouseState.isDown) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    mouseState.x = (e.clientX - rect.left) * dpr;
+    mouseState.y = (e.clientY - rect.top) * dpr;
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  mouseState.isDown = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  mouseState.isDown = false;
+});
+
+// Touch event handlers for mobile support
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const touch = e.touches[0];
+  mouseState.isDown = true;
+  mouseState.x = (touch.clientX - rect.left) * dpr;
+  mouseState.y = (touch.clientY - rect.top) * dpr;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (mouseState.isDown && e.touches.length > 0) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const touch = e.touches[0];
+    mouseState.x = (touch.clientX - rect.left) * dpr;
+    mouseState.y = (touch.clientY - rect.top) * dpr;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  mouseState.isDown = false;
+});
 
 wireUI();
 bindTooltips();
