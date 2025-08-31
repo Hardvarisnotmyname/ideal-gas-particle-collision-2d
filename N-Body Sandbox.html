@@ -221,7 +221,7 @@ pointer-events: none; /* don't block mouse */
   <div class="controls">
     <div class="control-group">
       <label class="tooltip" data-tooltip="Controls total no of particles. Updates in real-time without reset. Use grid mode if too many particles are lagging the sim">Total Particles</label>
-      <input id="particleCount" type="range" min="250" max="100000" step="250" value="10000" >
+      <input id="particleCount" type="range" min="1" max="100000" step="1" value="10000" >
       <div class="value" id="particleCountValue">10000</div>
     </div>
     <div class="control-group">
@@ -246,7 +246,7 @@ pointer-events: none; /* don't block mouse */
         <div id="pressureLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Strength of pressure force between particles">Pressure Force</label>
       <input id="pressureStrength" type="range" min="-30" max="30" value="5">
       <div class="value" id="pressureStrengthValue">5</div>
@@ -258,12 +258,12 @@ pointer-events: none; /* don't block mouse */
         <div id="gravityLabel" style="color:#7A5836">Off</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Strength of gravitational attraction between particles">Gravity Strength</label>
       <input type="range" id="gravityStrength" min="-100" max="100" step="1" value="10">
       <div class="value" id="gravityStrengthValue">10</div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Power law exponent for gravity force (2 = inverse square law)">Gravity Exponent</label>
       <input type="range" id="gravityExponent" min="0.1" max="3" step="0.1" value="2">
       <div class="value" id="gravityExponentValue">2.0</div>
@@ -287,7 +287,7 @@ pointer-events: none; /* don't block mouse */
         <div id="dragLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Air resistance coefficient - higher values slow particles more">Drag Coefficient</label>
       <input id="dragCoeff" type="range" min="0.001" max="0.1" step="0.001" value="0.005">
       <div class="value" id="dragCoeffValue">0.05</div>
@@ -299,14 +299,14 @@ pointer-events: none; /* don't block mouse */
         <div id="uncapFpsLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Particles move inward or outward from mouse when clicking and holding">Divergence</label>
       <div class="switch">
         <input type="checkbox" id="divergenceToggle" checked>
         <div id="divergenceLabel" style="color:#22c55e">Inward</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Particles rotate clockwise or anticlockwise around mouse when clicking and holding">Curl</label>
       <div class="switch">
         <input type="checkbox" id="curlToggle" checked>
@@ -335,20 +335,20 @@ pointer-events: none; /* don't block mouse */
       <input id="pipeHeight" type="range" min="0" max="100" value="1"  >
       <div class="value" id="pipeHeightValue">1%</div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Moves the central dividing wall. 50% is center, 0% is far left, 100% is far right.">Wall Position</label>
       <input id="wallPosition" type="range" min="0" max="100" value="50">
       <div class="value" id="wallPositionValue">50%</div>
     </div>
 	
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="Demon likes to be right so only lets hot particles in the right box">Maxwell's Demon</label>
       <div class="switch">
         <input type="checkbox" id="maxwellToggle">
         <div id="maxwellLabel" style="color:#7A5836" >Off</div>
       </div>
     </div>
-    <div class="control-group">
+    <div class="control-group" style="display:none;>
       <label class="tooltip" data-tooltip="250=demon wants the hottest particles only, 1= demon likes partcles which are moving.">Demon Threshold</label>
       <input id="demonThreshold" type="range" min="1" max="250" value="10">
       <div class="value" id="demonThresholdValue">10</div>
@@ -358,6 +358,42 @@ pointer-events: none; /* don't block mouse */
       <input id="substeps" type="range" min="1" max="8" value="2" >
       <div class="value" id="substepsValue">2</div>
     </div>
+    
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Treat particles as nodes with connecting bonds">Nodes</label>
+      <div class="switch">
+        <input type="checkbox" id="nodeToggle">
+        <div id="nodeLabel" style="color:#7A5836">Off</div>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Maximum number of bonds per particle. 'All' means unlimited connections.">Node Branches</label>
+      <input id="nodeBranches" type="range" min="0" max="11" step="1" value="3">
+      <div class="value" id="nodeBranchesValue">3</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Maximum distance for bond formation in pixels">Node Max Dist</label>
+      <input id="nodeMaxDist" type="range" min="10" max="2000" step="10" value="200">
+      <div class="value" id="nodeMaxDistValue">200px</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Minimum distance for bond formation in pixels">Node Min Dist</label>
+      <input id="nodeMinDist" type="range" min="0" max="200" step="1" value="100">
+      <div class="value" id="nodeMinDistValue">100px</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Spring stiffness for bonds. Higher values make more rigid connections.">Bond Stiffness</label>
+      <input id="bondStiffness" type="range" min="-2" max="1" step="0.1" value="0">
+      <div class="value" id="bondStiffnessValue">1.00</div>
+    </div>
+    <div class="control-group">
+      <label class="tooltip" data-tooltip="Enable dynamic bond forces using spring physics">Bond Dynamics</label>
+      <div class="switch">
+        <input type="checkbox" id="bondDynamicsToggle">
+        <div id="bondDynamicsLabel" style="color:#7A5836">Off</div>
+      </div>
+    </div>
+    
 	<div><span>Physics FPS:</span><span id="physicsFps">0</span></div>
   </div>
   
@@ -371,7 +407,7 @@ pointer-events: none; /* don't block mouse */
       <div class="stats" id="stats">
         <div class="stat-row"><span>FPS:</span><span id="fps">60</span></div>
         <div class="stat-row"><span>Target FPS:</span><span id="targetFps">60</span></div>
-        <div class="stat-row"><span>Render:</span><span id="renderMode">Unknown</span></div>
+        <div class="stat-row"><span>Bond Checks:</span><span id="bondChecks">0</span></div>
         <div class="stat-row"><span>Total Particles:</span><span id="totalParticles">10000</span></div>
         <div class="stat-row"><span>Collisions/sec:</span><span id="collisionRate">124</span></div>
         <div class="stat-row"><span>Collision Checks:</span><span id="collisionChecks">9074</span></div>
@@ -381,6 +417,8 @@ pointer-events: none; /* don't block mouse */
         <div class="stat-row"><span>Right Avg Speed:</span><span id="rightAvgSpeed">0.00</span></div>
         <div class="stat-row"><span>Left Max Speed:</span><span id="leftMaxSpeed">0.00</span></div>
         <div class="stat-row"><span>Right Max Speed:</span><span id="rightMaxSpeed">0.00</span></div>
+        <div class="stat-row"><span>Total Bonds:</span><span id="totalBonds">0</span></div>
+        <div class="stat-row"><span>Avg Bonds/Particle:</span><span id="avgBondsPerParticle">0.00</span></div>
       </div>
       <div class="graph"><div class="graph-title">Left Temp (Recent)</div><canvas id="leftTempRecentGraph" width="280" height="90"></canvas></div>
       <div class="graph"><div class="graph-title">Right Temp (Recent)</div><canvas id="rightTempRecentGraph" width="280" height="90"></canvas></div>
@@ -391,6 +429,7 @@ pointer-events: none; /* don't block mouse */
 </div>
 
 <script>
+
 // js to make css tooltip not going offscreen stuff
 (function(){
 // Single, reusable tooltip element
@@ -500,6 +539,14 @@ const config = {
   wallPosition: 50, // Percentage (0-100)
   divergenceInward: true, // true = inward, false = outward
   curlClockwise: true, // true = clockwise, false = anticlockwise
+  // Node/Bond configuration
+  nodeMode: false,
+  nodeBranches: 3, // -1 = "all", otherwise 0-10
+  nodeMaxDist: 200, // pixels
+  nodeMinDist: 100, // pixels
+  bondStiffness: 1.0, // spring constant
+  bondDynamics: false, // enable/disable bond forces
+  bondDamping: 0.1, // damping coefficient for bonds
 };
 
 let canvas = document.getElementById('canvas');
@@ -522,7 +569,235 @@ let leftRecent = [];
 let rightRecent = [];
 
 // Stats
-const stats = { fps:0, collisionRate:0, collisionChecks:0, leftBoxTemp:0, rightBoxTemp:0, totalParticles:0, leftAvgSpeed:0, rightAvgSpeed:0, leftMaxSpeed:0, rightMaxSpeed:0 };
+const stats = { fps:0, collisionRate:0, collisionChecks:0, leftBoxTemp:0, rightBoxTemp:0, totalParticles:0, leftAvgSpeed:0, rightAvgSpeed:0, leftMaxSpeed:0, rightMaxSpeed:0, totalBonds:0, avgBondsPerParticle:0 };
+stats.bondChecks = 0;
+// Bond System
+const BondSystem = {
+  bonds: [], // Array of {i, j, length} objects
+  particleBonds: [], // Array of Set objects, one per particle
+  enabled: false,
+  updateCounter: 0,
+  updateFrequency: 10, // Update bonds every 10 physics ticks
+  bondChecksThisFrame: 0,
+  
+  init(particleCount) {
+    this.bonds = [];
+    this.particleBonds = [];
+    for (let i = 0; i < particleCount; i++) {
+      this.particleBonds.push(new Set());
+    }
+  },
+  
+  clear() {
+    this.bonds = [];
+    for (let bonds of this.particleBonds) {
+      bonds.clear();
+    }
+  },
+  
+  addBond(i, j, distance) {
+    if (i === j) return false;
+    if (this.particleBonds[i].has(j)) return false; // Already bonded
+    
+    const maxBranches = config.nodeBranches === -1 ? Infinity : config.nodeBranches;
+    if (this.particleBonds[i].size >= maxBranches || this.particleBonds[j].size >= maxBranches) {
+      return false; // Capacity exceeded
+    }
+    
+    this.bonds.push({i, j, length: distance});
+    this.particleBonds[i].add(j);
+    this.particleBonds[j].add(i);
+    return true;
+  },
+  
+  removeBond(bondIndex) {
+    if (bondIndex < 0 || bondIndex >= this.bonds.length) return;
+    
+    const bond = this.bonds[bondIndex];
+    this.particleBonds[bond.i].delete(bond.j);
+    this.particleBonds[bond.j].delete(bond.i);
+    this.bonds.splice(bondIndex, 1);
+  },
+
+  update(particles, particleCount, cfg) {
+    if (!this.enabled) {
+      this.bondChecksThisFrame = 0;
+      return;
+    }
+    
+    this.updateCounter++;
+    if (this.updateCounter >= this.updateFrequency) {
+      this.updateCounter = 0;
+      this.performBondUpdate(particles, particleCount, cfg);
+    } else {
+      this.validateExistingBonds(particles, particleCount, cfg);
+    }
+  },
+
+  getBondChecks() {
+    return this.bondChecksThisFrame;
+  },
+
+  validateExistingBonds(particles, particleCount, cfg) {
+    this.bondChecksThisFrame = 0;
+    if (cfg.nodeMinDist > cfg.nodeMaxDist) return;
+
+    const minDist = cfg.nodeMinDist;
+    const maxDist = cfg.nodeMaxDist === 1000 ? 10000 : cfg.nodeMaxDist;
+
+    for (let i = this.bonds.length - 1; i >= 0; i--) {
+      const bond = this.bonds[i];
+      const iIdx = bond.i * 8;
+      const jIdx = bond.j * 8;
+
+      const dx = particles[jIdx] - particles[iIdx];
+      const dy = particles[jIdx + 1] - particles[iIdx + 1];
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      this.bondChecksThisFrame++;
+      if (dist < minDist || dist > maxDist) {
+        this.removeBond(i);
+      }
+    }
+  },
+  
+  performBondUpdate(particles, particleCount, cfg) {
+    this.bondChecksThisFrame = 0; // Reset for this frame
+    
+    // Early return if bonds are disabled by invalid settings
+    if (cfg.nodeBranches === 0) return; // No bonds allowed
+    if (cfg.nodeMinDist > cfg.nodeMaxDist) return; // Invalid distance range
+    
+    const minDist = cfg.nodeMinDist;
+    const maxDist = cfg.nodeMaxDist === 1000 ? 10000 : cfg.nodeMaxDist; // Use 10000 instead of Infinity
+    const maxBranches = cfg.nodeBranches === -1 ? Infinity : cfg.nodeBranches;
+    // First, prune excess bonds when branch limit is reduced
+    if (maxBranches !== Infinity) {
+      for (let i = 0; i < particleCount; i++) {
+        while (this.particleBonds[i].size > maxBranches) {
+          // Find and remove the oldest bond for this particle
+          for (let j = this.bonds.length - 1; j >= 0; j--) {
+            const bond = this.bonds[j];
+            if (bond.i === i || bond.j === i) {
+              this.removeBond(j);
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    this.validateExistingBonds(particles, particleCount, cfg); // Also validate on full update
+    
+    // Form new bonds (only check a subset for performance)
+    const checkFraction = particleCount > 1000 ? 0.1 : 0.5;
+    const checkCount = Math.floor(particleCount * checkFraction);
+    
+    for (let i = 0; i < checkCount; i++) {
+      const particleI = Math.floor(Math.random() * particleCount);
+      const iIdx = particleI * 8;
+      const maxBranches = cfg.nodeBranches === -1 ? Infinity : cfg.nodeBranches;
+      
+      if (this.particleBonds[particleI].size >= maxBranches) continue;
+      
+      // Check nearby particles using spatial grid
+      const cellSize = cfg.gridSize;
+      const x = particles[iIdx];
+      const y = particles[iIdx + 1];
+      const gx = Math.floor(x / cellSize);
+      const gy = Math.floor(y / cellSize);
+      
+      const searchRange = Math.ceil(maxDist / cellSize);
+      
+      for (let dx = -searchRange; dx <= searchRange; dx++) {
+        for (let dy = -searchRange; dy <= searchRange; dy++) {
+          const cellX = gx + dx;
+          const cellY = gy + dy;
+          // Use the existing spatial grid from PhysicsModule if available
+          // For now, we'll do a simple distance check
+          
+          for (let particleJ = 0; particleJ < particleCount; particleJ++) {
+            if (particleI === particleJ) continue;
+            if (this.particleBonds[particleI].has(particleJ)) continue;
+            if (this.particleBonds[particleJ].size >= maxBranches) continue;
+            
+            const jIdx = particleJ * 8;
+            const dx = particles[jIdx] - x;
+            const dy = particles[jIdx + 1] - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.bondChecksThisFrame++; // Count this check
+            if (dist >= minDist && dist <= maxDist) {
+              if (this.addBond(particleI, particleJ, dist)) {
+                break; // Only add one bond per iteration for this particle
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  applyBondForces(particles, particleCount, cfg, dt) {
+    if (!this.enabled || !cfg.bondDynamics) return;
+    
+    const k = cfg.bondStiffness;
+    const damping = cfg.bondDamping;
+    const equilibriumLength = (cfg.nodeMaxDist + cfg.nodeMinDist) / 2;
+    
+    for (const bond of this.bonds) {
+      const iIdx = bond.i * 8;
+      const jIdx = bond.j * 8;
+      
+      const dx = particles[jIdx] - particles[iIdx];
+      const dy = particles[jIdx + 1] - particles[iIdx + 1];
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist === 0) continue;
+      
+      // Hooke's law force
+      const force = -k * (dist - equilibriumLength);
+      
+      // Normalize direction
+      const nx = dx / dist;
+      const ny = dy / dist;
+      
+      // Add damping
+      const dvx = particles[jIdx + 2] - particles[iIdx + 2];
+      const dvy = particles[jIdx + 3] - particles[iIdx + 3];
+      const relativeVelocity = dvx * nx + dvy * ny;
+      const dampingForce = -damping * relativeVelocity;
+      
+      const totalForce = force + dampingForce;
+      const fx = totalForce * nx;
+      const fy = totalForce * ny;
+      
+      // Apply forces (assuming unit mass)
+      particles[iIdx + 2] -= fx * dt;
+      particles[iIdx + 3] -= fy * dt;
+      particles[jIdx + 2] += fx * dt;
+      particles[jIdx + 3] += fy * dt;
+    }
+  },
+  
+  render(ctx, particles, particleCount) {
+    if (!this.enabled || this.bonds.length === 0) return;
+    
+    ctx.save();
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.globalCompositeOperation = 'screen';
+    
+    ctx.beginPath();
+    for (const bond of this.bonds) {
+      const iIdx = bond.i * 8;
+      const jIdx = bond.j * 8;
+      
+      ctx.moveTo(particles[iIdx], particles[iIdx + 1]);
+      ctx.lineTo(particles[jIdx], particles[jIdx + 1]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+};
 
 // Mouse interaction state
 let mouseState = {
@@ -804,7 +1079,7 @@ resize();
 
 // ---------- Optimized Physics Module ----------
 let PhysicsModule = (function(){
-  const Module = { ready:false, particles:null, particleCount:0 };
+  const Module = { ready:false, particles:null, particleCount:0, bondChecks: 0 };
   
   // Spatial grid for force calculations
   let spatialGrid = null;
@@ -874,6 +1149,7 @@ let PhysicsModule = (function(){
 
   function updateParticleCount(newCount) {
     if (newCount === Module.particleCount) return;
+	BondSystem.clear();
     const oldCount = Module.particleCount;
     const newParticles = new Float32Array(newCount * 8);
     const copyCount = Math.min(newCount, oldCount);
@@ -904,6 +1180,7 @@ let PhysicsModule = (function(){
     
     Module.particles = newParticles;
     Module.particleCount = newCount;
+	BondSystem.init(newCount);
     updateColors();
   }
 
@@ -914,6 +1191,9 @@ let PhysicsModule = (function(){
     const cx = w * (config.wallPosition / 100);
     
     reinitGrid(w, h, config.gridSize);
+    
+    // Initialize bond system
+    BondSystem.init(count);
     
     for(let i=0;i<count;i++){ 
       const idx=i*8; 
@@ -938,9 +1218,20 @@ let PhysicsModule = (function(){
 
   function update(cfg){ 
     if(!Module.ready) return; 
-    const dt = 1/60/cfg.substeps; 
+    const dt = 1/60/cfg.substeps;
+    
+    // Update bond system
+    BondSystem.enabled = cfg.nodeMode;
+    // This now handles its own update frequency
+    BondSystem.update(Module.particles, Module.particleCount, cfg);
+    Module.bondChecks = BondSystem.getBondChecks();
+    
     for(let s=0;s<cfg.substeps;s++){ 
       applyForces(dt,cfg); 
+      // Apply bond forces after regular forces
+      if (BondSystem.enabled) {
+        BondSystem.applyBondForces(Module.particles, Module.particleCount, cfg, dt);
+      }
       updatePositions(dt,cfg); 
       handleCollisions(cfg); 
     } 
@@ -1414,7 +1705,8 @@ let PhysicsModule = (function(){
     get particles(){return Module.particles;}, 
     get particleCount(){return Module.particleCount;}, 
     get collisionStats(){return Module.collisionStats||{collisions:0,checks:0}}, 
-    ready:()=>Module.ready 
+    ready:()=>Module.ready,
+    get bondChecks(){return Module.bondChecks||0}
   };
 })();
 
@@ -1603,7 +1895,7 @@ function updateStatsDOM(){
   document.getElementById('collisionRate').textContent=Math.round(stats.collisionRate); 
   document.getElementById('collisionChecks').textContent=Math.round(stats.collisionChecks); 
   document.getElementById('totalParticles').textContent=stats.totalParticles; // Now live
-  const rm = document.getElementById('renderMode'); if (rm && renderer) rm.textContent = renderer.getRenderMode();
+  document.getElementById('bondChecks').textContent = stats.bondChecks || 0; // Show bond checks instead of render mode
   document.getElementById('leftBoxTemp').textContent=(stats.leftBoxTemp || 0).toFixed(2); 
   document.getElementById('rightBoxTemp').textContent=(stats.rightBoxTemp || 0).toFixed(2);
   // NEW STATS
@@ -1611,6 +1903,9 @@ function updateStatsDOM(){
   document.getElementById('rightAvgSpeed').textContent=(stats.rightAvgSpeed || 0).toFixed(2);
   document.getElementById('leftMaxSpeed').textContent=(stats.leftMaxSpeed || 0).toFixed(2);
   document.getElementById('rightMaxSpeed').textContent=(stats.rightMaxSpeed || 0).toFixed(2);
+  // Bond stats
+  document.getElementById('totalBonds').textContent = stats.totalBonds;
+  document.getElementById('avgBondsPerParticle').textContent = (stats.avgBondsPerParticle || 0).toFixed(2);
     // Compare all left/right stat pairs
   colorStat("leftBoxTemp",   "rightBoxTemp",   stats.leftBoxTemp,   stats.rightBoxTemp);
   colorStat("leftAvgSpeed",  "rightAvgSpeed",  stats.leftAvgSpeed,  stats.rightAvgSpeed);
@@ -1640,7 +1935,9 @@ setInterval(() => {
 function physicsLoop() {
   if (!isRunning) return;
   physicsTicks++;
+  // Get bond checks from the physics module AFTER it updates
   PhysicsModule.update(config);
+  stats.bondChecks = PhysicsModule.bondChecks;
 
   if (frameCount % 3 === 0) {
     const particles = PhysicsModule.particles;
@@ -1681,6 +1978,10 @@ function physicsLoop() {
     stats.rightMaxSpeed = rightMaxSpeed;
     stats.totalParticles = validParticleCount; // Update live count
     
+    // Update bond statistics
+    stats.totalBonds = BondSystem.bonds.length;
+    stats.avgBondsPerParticle = validParticleCount > 0 ? (stats.totalBonds * 2) / validParticleCount : 0;
+    
     pushHistory(stats.leftBoxTemp, stats.rightBoxTemp);
   }
 
@@ -1715,8 +2016,16 @@ function mainLoop(ts) {
 // Render the latest state of the particles
 renderer.render(PhysicsModule.particles, PhysicsModule.particleCount);
 
+
 // Draw the overlay wall
 renderer.drawWalls();
+
+// Render bonds on overlay canvas
+if (config.nodeMode) {
+  const overlayCtx = overlay.getContext('2d');
+  BondSystem.render(overlayCtx, PhysicsModule.particles, PhysicsModule.particleCount);
+}
+
 
   // Update UI less frequently
   if (frameCount % 5 === 0) {
@@ -1736,6 +2045,25 @@ function wireUI(){
     el.addEventListener('input',()=>{ cb(el.value); upd(); }); 
     upd(); 
   };
+  
+  const updateParticleSliderMax = () => {
+  const slider = document.getElementById('particleCount');
+  const valueDisplay = document.getElementById('particleCountValue');
+  
+  if (config.nodeMode) {
+    slider.max = 500;
+    // If current count exceeds 500, reduce it immediately
+    if (config.particleCount > 500) {
+      config.particleCount = 500;
+      slider.value = 500;
+      valueDisplay.textContent = 500;
+      // Actually update the physics module with the new count
+      PhysicsModule.updateParticleCount(config.particleCount);
+    }
+  } else {
+    slider.max = 100000;
+  }
+};
   
   set('particleCount', v=>{ 
     config.particleCount=Number(v); 
@@ -1882,6 +2210,67 @@ function wireUI(){
       label.textContent = 'Anticlockwise';
       label.style.color = '#facc15';
     }
+  });
+  
+  document.getElementById('nodeToggle').addEventListener('change', (e) => {
+  config.nodeMode = e.target.checked;
+  const label = document.getElementById('nodeLabel');
+  
+  // Call this BEFORE updating the UI
+  updateParticleSliderMax();
+  
+  label.textContent = config.nodeMode ? 'On' : 'Off';
+  label.style.color = config.nodeMode ? '#22c55e' : '#7A5836';
+  
+  if (!config.nodeMode) {
+    BondSystem.clear();
+  }
+});
+  
+  set('nodeBranches', v => {
+    const val = Number(v);
+    config.nodeBranches = val === 11 ? -1 : val; // 11 = "All"
+  }, v => Number(v) === 11 ? 'All' : v);
+  
+  set('nodeMaxDist', v => {
+    const val = Number(v);
+    config.nodeMaxDist = val;
+    // Update nodeMinDist slider max to match current nodeMaxDist
+    const minSlider = document.getElementById('nodeMinDist');
+    minSlider.max = val;
+    // Ensure nodeMinDist doesn't exceed nodeMaxDist
+    if (config.nodeMinDist > val) {
+      config.nodeMinDist = val;
+      minSlider.value = val;
+      document.getElementById('nodeMinDistValue').textContent = val + 'px';
+    }
+  }, v => Number(v) === 2000 ? '∞' : v + 'px');
+  
+  set('nodeMinDist', v => {
+    const val = Number(v);
+    config.nodeMinDist = val;
+    // Update nodeMaxDist slider min to match current nodeMinDist
+    const maxSlider = document.getElementById('nodeMaxDist');
+    maxSlider.min = val;
+    // Ensure nodeMaxDist doesn't go below nodeMinDist
+    if (config.nodeMaxDist < val) {
+      config.nodeMaxDist = val;
+      maxSlider.value = val;
+      document.getElementById('nodeMaxDistValue').textContent = val + 'px';
+    }
+  }, v => v + 'px');
+  
+  set('bondStiffness', v => {
+    // Logarithmic scale: -2 to 1 maps to 0.01 to 10
+    const logVal = Number(v);
+    config.bondStiffness = Math.pow(10, logVal);
+  }, v => Math.pow(10, Number(v)).toFixed(2));
+  
+  document.getElementById('bondDynamicsToggle').addEventListener('change', (e) => {
+    config.bondDynamics = e.target.checked;
+    const label = document.getElementById('bondDynamicsLabel');
+    label.textContent = config.bondDynamics ? 'On' : 'Off';
+    label.style.color = config.bondDynamics ? '#22c55e' : '#7A5836';
   });
 
   document.getElementById('resetBtn').addEventListener('click', ()=>{ 
