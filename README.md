@@ -1,337 +1,455 @@
-this readme is outdated the tooltips in the game are also outdated enjoy!
+# Particle Physics Sandbox Simulator
 
-# Ultimate Ideal Gas Simulation - VC funded project
+A real-time particle physics simulation built with HTML5 Canvas and WebGL, featuring advanced physics modeling, interactive controls, and educational demonstrations of thermodynamic principles.
 
-## 🔬 What's this?
 
-Welcome to an advanced particle physics playground! This simulation lets you explore how thousands of particles behave under different physical forces - from basic collisions to complex phenomena like temperature equilibrium, gravity wells, and even a mini universe.
+## Table of Contents
 
-**Probably For**: STEM students, educators, curious coders, kids fascinated by physics, and anyone who wants to see invisible forces in action!
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [User Interface](#user-interface)
+- [Physics Controls](#physics-controls)
+- [Advanced Features](#advanced-features)
+- [Technical Details](#technical-details)
+- [Performance Optimization](#performance-optimization)
+- [Educational Applications](#educational-applications)
+- [Browser Compatibility](#browser-compatibility)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
----
-i hate this ai generated garbage readme so here's a screenshot.. just download the html and it should run, fix it yourself if it doesnt, lu bye.
-<img width="1912" height="974" alt="image" src="https://github.com/user-attachments/assets/66d0c99c-0f91-490c-bd3e-8fa602767a86" />
+## Overview
 
+This simulator creates a virtual particle environment where you can observe and manipulate the behavior of thousands of particles in real-time. The simulation demonstrates fundamental physics concepts including:
 
-## 🚀 Quick Start
-
-1. **Hit Reset** to seed fresh particles
-2. **Open the Pipe** to connect the two boxes
-3. **Watch the magic** - hot (red) particles mix with cold (blue) ones
-4. **Check the graphs** to see temperature equilibrium happen in real-time!
-
----
-
-## 🎨 Visual Guide
-
-### Particle Colors (Speed-Based)
-
-- **🔵 Blue**: Slow/cold particles (low kinetic energy)
-- **🟢 Green**: Medium speed particles
-- **🟡 Yellow**: Fast particles
-- **🔴 Red**: Very fast/hot particles (high kinetic energy)
-
-The simulation uses HSL color shifting, so you'll see smooth transitions through the entire spectrum as particle speeds change!
-
----
-
-
-another nice picture sprinkled in, try to use the settings you see to get the same, hopefully it should work, if not open the config values and spend hours tweaking the constants and magic numbers :D
-<img width="1911" height="977" alt="image" src="https://github.com/user-attachments/assets/a47b5537-40c6-4662-ac06-6cd09111431e" />
-
-
-## 🎛️ Control Panel Guide
-
-### Basic Controls
-
-**Total Particles** (100 - 120,000)
-
-- More particles = more realistic physics but slower performance
-- Sweet spot: 10,000 for most experiments
-- Use Grid mode for 10,000+ particles with gravity/pressure
-
-**Left/Right Temperature** (0 - 30,000)
-
-- Sets initial particle speeds in each box
-- Only affects new particles when you Reset
-- Try extreme differences (50 vs 30,000) for dramatic effects!
-
-**Particle Radius** (1-12px)
-
-- Bigger particles = more collisions
-- Large radius + few particles = easy to follow individual bounces
-- Small radius + many particles = realistic gas behavior
-
-**Pipe Height** (0-100%)
-
-- Controls the opening between boxes
-- 0% = completely sealed
-- 100% = wide open connection
-- Try 1-5% for realistic gas flow effects
-
-one day this will be a real readme
-<img width="1914" height="983" alt="image" src="https://github.com/user-attachments/assets/b7844257-58d7-4cca-96d3-a2c86d7116f7" />
-
-
-### Advanced Physics
-
-**Maxwell's Demon** 👹
-
-- When ON: Only allows fast particles to move left→right
-- Demonstrates the famous thermodynamics thought experiment
-- **Creates density gradients**: Fast particles accumulate on the right, slow on the left
-- **Demon Threshold**: Sets how fast a particle needs to be (1-250)
-  - Higher = demon is pickier about "fast" particles
-  - Lower = demon lets more particles through
-
-**Collision Modes**
-
-- **SAP Mode**: More accurate physics, better for studying collisions
-- **Grid Mode**: Faster performance, creates cool 3D-like effects with large particles
-
-**Force Systems**
-
-- **Gravity**: Particles attract each other (creates clusters/singularities)
-- **Pressure**: Particles repel nearby neighbors (realistic gas pressure)
-- **Friction**: Energy loss during collisions (particles slow down over time)
-- **Drag**: Air resistance effect (fast particles lose more speed)
-
-### Performance Tuning
-
-**Substeps** (1-8)
-
-- Higher = more accurate collision detection
-- Lower = better performance
-- Reduce if simulation feels laggy
-
-**Max Speed** (5-2500)
-
-- Speed limiter to prevent particles from going too fast
-- Lower values = calmer simulation
-
-**Uncap FPS** 🚀
-
-- Progressively increases simulation speed: 60→80→100→120+ FPS
-- Watch temperature equilibrium happen in seconds instead of minutes!
-- May stress your CPU - use with caution
-
----
-Hey guys compressing screen recordings with high bitrate to gifs under 10mb is so much fun especially if you dont know sh...
-![Animation1](https://github.com/user-attachments/assets/fcc0c68d-6828-4565-82c5-81401a1cda28)
-
-## 🧪 Cool Experiments to Try
-
-### 1. **Temperature Equilibrium Classic**
-
-- Set Left: 20,000, Right: 50
-- Open pipe to 2%
-- Watch hot particles slowly warm up the cold side
-- Observe graphs reaching equilibrium
-
-### 2. **Rocket Nozzle Effect**
-
-- Make left side very hot (25,000+)
-- Keep right side cold (50)
-- Open pipe just 1%
-- See high-pressure gas escaping through small opening
-
-### 3. **Gravity Wells & Clusters**
-
-- Turn on Gravity
-- Use Grid mode for performance
-- Watch particles form clusters and orbital patterns
-- Try with large radius for clearer visualization
-
-### 4. **Collision Physics Demo**
-
-- Set particles to ~500 total
-- Increase radius to 8-12
-- Use SAP mode for accuracy
-- Watch individual particle bounces clearly
-
-### 5. **Maxwell's Demon Paradox**
-
-- Enable Maxwell's Demon
-- Set threshold around 50
-- Demon "cheats" thermodynamics by sorting particles
-- Watch density gradients form - fast particles pile up on the right!
-- See if you can break the second law!
-
-### 6. **Density Gradient Study**
-
-- Use Maxwell's Demon with threshold ~100
-- Start with equal temperatures on both sides
-- Watch particles naturally separate by speed/density
-- Perfect demonstration of selective permeability
-
-### 6. **Density Gradient Study**
-
-- Use Maxwell's Demon with threshold ~100
-- Start with equal temperatures on both sides
-- Watch particles naturally separate by speed/density
-- Perfect demonstration of selective permeability
-
-### 7. **Pressure Cooker**
-
-- Small pipe opening (1%)
-- High particle count (50,000+)
-- Turn on Pressure forces
-- Watch realistic gas dynamics
-
-### 8. **Friction & Drag Studies**
-
-- Start with high-energy particles
-- Enable Friction and/or Drag
-- Watch the system slowly lose energy
-- Perfect for studying energy dissipation
-
----
-![Animation2](https://github.com/user-attachments/assets/5e1f00fd-e2bd-4e06-a315-128de964e04b)
-
-## ⚡ Performance Guide
-
-### Smooth Performance (60+ FPS)
-
-- **Up to 10,000 particles**: Any settings work well
-- **10,000-50,000 particles**: Use Grid mode, avoid Gravity+Pressure
-- **50,000+ particles**: Grid mode only, minimal effects
-
-### When Things Get Slow
-
-1. **Switch to Grid mode** (faster than SAP)
-2. **Reduce Substeps** to 1-2
-3. **Turn off Gravity and Pressure** (most CPU-intensive)
-4. **Lower particle count** temporarily
-5. **Reduce particle radius**
-
-### For Maximum Speed
-
-- Enable **Uncap FPS** (gradually increases to your display's max refresh rate)
-- Use **Grid collision mode**
-- Keep **Substeps** at 1-2
-- Disable **Gravity** and **Pressure**
-
----
-
-## 📊 Reading the Data
-
-### Stats Panel
-
-- **FPS**: Rendering frame rate (higher = smoother visuals)
-- **Target FPS**: Simulation speed (increases with Uncap FPS)
-- **Collisions/sec**: How many particle bounces per second
-- **Collision Checks**: CPU work for collision detection
-- **Left/Right Box Temp**: Average particle speed in each side
-
-### Temperature Graphs
-
-- **Recent**: Last ~2 minutes of data (good for watching changes)
-- **Full**: Complete simulation history (shows long-term trends)
-- **Watch for**: Equilibrium (both sides reaching same temperature)
-
----
-
-## 🎓 Physics Concepts Demonstrated
-
-- **Kinetic Theory of Gases**: Particle motion represents molecular motion
-- **Thermodynamic Equilibrium**: Hot and cold sides eventually balance
-- **Maxwell-Boltzmann Distribution**: Particle speed distributions
+- **Kinetic Theory of Gases**: Particle motion and temperature relationships
+- **Thermodynamics**: Heat transfer between systems
 - **Collision Dynamics**: Elastic and inelastic collisions
-- **Pressure**: Force from particle collisions with boundaries
-- **Phase Transitions**: Watch particles cluster under gravity
-- **Energy Conservation**: Total system energy (with friction off)
-- **Entropy**: System disorder and the second law of thermodynamics
+- **Force Interactions**: Gravity, pressure, and drag
+- **Statistical Mechanics**: Maxwell-Boltzmann distribution
+
+The simulator is particularly useful for understanding concepts like Maxwell's Demon, Brownian motion, and the behavior of gases under different conditions.
+
+## Features
+
+### Core Physics Engine
+- **Real-time particle simulation** with up to 100,000 particles (500 in Node/Bond mode)
+- **Elastic collision detection** using SAP (Sweep and Prune) or spatial grid methods
+- **Force calculations** including gravity, pressure, friction, and drag
+- **Temperature modeling** with independent left/right box controls
+- **Speed-based color coding** (blue = cold, red = hot)
+
+### Interactive Controls
+- **Mouse interaction**: Click and drag to apply divergence and curl forces
+- **Real-time parameter adjustment** via sliders and toggles
+- **Wall manipulation**: Adjustable divider wall with controllable opening
+- **Particle spawning**: Dynamic particle count changes without simulation reset
+
+### Advanced Physics Features
+- **Maxwell's Demon**: Intelligent particle gate that selectively allows passage
+- **Node/Bond System**: Molecular structure simulation with spring physics
+- **Spatial optimization**: Grid-based force calculations for performance
+- **Substepping**: Multiple physics iterations per frame for accuracy
+
+### Visualization & Analytics
+- **Real-time graphs**: Temperature history for both chambers
+- **Performance monitoring**: FPS, collision rates, and physics metrics
+- **Statistical analysis**: Average/max speeds, temperature calculations
+- **Bond visualization**: Dynamic connection lines between bonded particles
+
+## Quick Start
+
+### Running the Simulator
+
+1. **Download the file**: Download `sim.html` (single self-contained HTML file)
+2. **Open in browser**: Simply open `sim.html` in any modern web browser
+3. **No installation required**: Runs entirely in the browser using WebGL/Canvas - no additional setup needed
+
+### Basic Usage
+
+1. **Start the simulation**: The simulator begins running automatically upon opening
+2. **Adjust particle count**: Use the "Particles" slider to set the number of particles (1-100,000)
+3. **Set temperatures**: Control left and right box temperatures independently
+4. **Observe behavior**: Watch particles move and interact in real-time (blue=cold, red=hot particles)
+5. **Mouse interaction**: Click and drag on the simulation area to apply forces
+6. **Experiment**: Try different physics settings and observe the results
+
+### First Experiment: Heat Transfer
+
+1. Set left temperature to 5000, right temperature to 50
+2. Open the wall (click "OpenWall" button)
+3. Watch as heat transfers from left to right over time
+4. Observe the temperature graphs showing equalization
+
+## User Interface
+
+### Control Panels
+
+The interface includes header buttons for common actions:
+- **Reset**: Reset the simulation to initial state
+- **Pause/Resume**: Pause or resume the simulation
+- **OpenWall/Close Pipe**: Toggle the wall opening
+
+The interface is organized into four main tabs:
+
+#### Setup Tab
+- **Particles**: Total number of particles in simulation (1-100,000, default: 10,000)
+- **Left Temp**: Temperature of particles in left chamber
+- **Right Temp**: Temperature of particles in right chamber
+- **Radius**: Size of individual particles
+- **Wall Position**: Location of dividing wall (0-100%)
+- **Divergence**: Mouse force direction (Inward/Outward)
+- **Curl**: Mouse rotation direction (Clockwise/Anticlockwise)
+
+#### Forces Tab
+- **Gravity**: Inter-particle gravitational attraction
+- **Gravity Strength**: Strength of gravitational force
+- **Gravity Exponent**: Power law for gravity (2.0 = inverse square)
+- **Pressure**: Short-range repulsive forces
+- **Pressure Strength**: Strength of pressure force
+- **Friction**: Energy loss during collisions
+- **Drag**: Air resistance force
+- **Drag Coefficient**: Air resistance strength
+- **Downwards Gravity**: Constant downward force on all particles
+
+#### Interaction Tab
+- **Wall Opening**: Size of opening in dividing wall (0-100%, default: 1%)
+- **Maxwell's Demon**: Intelligent particle gate
+- **Demon Threshold**: Speed threshold for demon selection
+- **Nodes**: Enable particle bonding system
+- **Branches**: Maximum bonds per particle (0-11, where 11 = unlimited)
+- **Node Max Distance**: Maximum bonding distance
+- **Node Min Distance**: Minimum bonding distance
+- **Bond Stiffness**: Spring constant for bonds
+- **Bond Dynamics**: Enable spring physics
+- **Bond Visibility**: Show/hide bond connection lines
+
+#### Performance Tab
+- **Substeps**: Physics iterations per frame (1-8)
+- **Grid Size**: Spatial grid cell size for optimization
+- **Gravity Range**: Effective range of gravity calculations
+- **FastFwd Simulation**: Uncapped frame rate mode
+- **Collision Mode**: SAP vs Grid collision detection
+
+### Statistics Panel
+
+Real-time monitoring of:
+- **FPS**: Current rendering frame rate
+- **Target FPS**: Target frame rate for physics simulation
+- **Physics FPS**: Physics simulation rate
+- **Total Particles**: Current particle count
+- **Collisions/sec**: Collision events per second
+- **Bond Checks**: Number of bond formation checks per frame
+- **Temperature**: Left and right chamber temperatures
+- **Average/Max Speed**: Particle velocity statistics
+- **Bond Statistics**: Connection counts and averages
+
+### Visual Features
+
+- **Dark theme**: Modern dark interface with CSS variables for consistent styling
+- **Tooltip system**: Hover over controls for detailed help text and explanations (includes some playful and humorous descriptions)
+- **Real-time color coding**: Particles change color based on speed (blue=cold, red=hot)
+- **Responsive design**: Adapts to different screen sizes and devices
+- **Custom UI controls**: Styled sliders, switches, and buttons for intuitive interaction
+
+## Physics Controls
+
+### Temperature Control
+
+The simulator uses a simplified temperature model where particle speed represents thermal energy:
+
+```
+Temperature ∝ Average Particle Speed²
+```
+
+- **Left Temp**: Controls initial speeds of particles starting in left chamber
+- **Right Temp**: Controls initial speeds of particles starting in right chamber
+- **Real-time adjustment**: Temperature changes are applied gradually to avoid simulation instability
+
+### Force Systems
+
+#### Gravity
+- **Inter-particle forces**: Each particle attracts every other particle
+- **Configurable strength**: Adjustable attraction magnitude
+- **Variable exponent**: Power law from 0.1 to 3.0 (2.0 = realistic inverse square)
+- **Range limiting**: Effective distance for performance optimization
+
+#### Pressure
+- **Short-range repulsion**: Particles push apart when too close
+- **Distance-based**: Force strength decreases with distance
+- **Performance optimized**: Uses spatial grid for efficiency
+
+#### Friction & Drag
+- **Collision friction**: Energy loss during particle collisions
+- **Air resistance**: Continuous speed reduction
+- **Configurable coefficients**: Adjustable energy loss rates
+
+### Mouse Interaction
+
+- **Click and hold** on the simulation area to apply forces
+- **Divergence**: Particles move toward or away from mouse cursor
+- **Curl**: Particles rotate clockwise or counterclockwise around cursor
+- **Force strength**: Proportional to distance from mouse
+
+## Advanced Features
+
+### Maxwell's Demon
+
+Implements the famous thought experiment:
+- **Indirect teleportation**: When a fast particle approaches from the left, a slow particle from the right is teleported to the left; when a slow particle approaches from the right, a fast particle from the left is teleported to the right
+- **Speed threshold**: Configurable speed for particle selection (default: 10)
+- **Thermodynamic violation**: Demonstrates apparent entropy decrease by creating temperature differences
+
+### Node/Bond System
+
+Creates molecular-like structures:
+- **Dynamic bonding**: Particles form connections based on distance
+- **Spring physics**: Bonds behave like springs with stiffness (default: 1.0) and damping (default: 0.1)
+- **Branch limiting**: Maximum connections per particle
+- **Distance constraints**: Minimum and maximum bonding distances
+
+### Performance Optimizations
+
+- **Spatial grid**: Divides space into cells for efficient neighbor finding (configurable grid size)
+- **Force sampling**: Adaptive sampling reduces computation for distant particles (auto-scales with particle count)
+- **WebGL acceleration**: Hardware-accelerated rendering with point sprites
+- **Adaptive FPS**: Automatic frame rate adjustment with uncapped mode (up to 240 FPS)
+- **Substepping**: Multiple physics iterations per frame for collision accuracy (1-8 steps)
+- **Collision modes**: SAP (Sweep and Prune) for accuracy vs Grid for speed
+
+## Technical Details
+
+### Architecture
+
+The simulator uses a modular architecture:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User Interface│    │  Physics Engine │    │   Renderer      │
+│   (HTML/CSS/JS) │◄──►│  (JavaScript)   │◄──►│ (WebGL/Canvas)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │   Bond System   │
+                       │   (Molecular)   │
+                       └─────────────────┘
+```
+
+### Physics Engine
+
+- **Time stepping**: Fixed time step with substepping for stability
+- **Collision detection**: O(n log n) SAP or O(n) grid-based methods
+- **Force integration**: Euler integration methods
+- **Boundary conditions**: Reflective walls with configurable openings
+
+### Rendering Pipeline
+
+- **Primary renderer**: WebGL 2.0 with point sprites (hardware acceleration)
+- **Fallback renderer**: WebGL 1.0, then HTML5 Canvas 2D if WebGL unavailable
+- **Color mapping**: HSV-based speed-to-color conversion (blue=cold, red=hot)
+- **Overlay system**: Separate canvas for UI elements, walls, and bond visualization
+
+### Data Structures
+
+- **Particle array**: Float32Array with 8 values per particle (x, y, vx, vy, r, g, b, radius)
+- **Spatial grid**: 2D grid system for efficient neighbor finding and force calculations
+- **Bond system**: Dynamic arrays for particle connections and spring physics
+- **Force sampling**: Adaptive sampling reduces computation for distant particle interactions
+
+## Performance Optimization
+
+### Rendering Optimizations
+- **WebGL instancing**: Single draw call for all particles
+
+- **Frame rate capping**: Prevents unnecessary computation
+
+### Physics Optimizations
+- **Spatial partitioning**: Grid-based neighbor finding
+- **Force sampling**: Random sampling of source particles to reduce overall calculations
+
+
+### Memory Management
+- **Typed arrays**: Efficient memory usage with Float32Array
+
+- **Garbage collection**: Minimize allocations during simulation
+
+## Educational Applications
+
+### Physics Concepts Demonstrated
+
+1. **Kinetic Theory**
+   - Particle motion and energy distribution
+   - Temperature-speed relationships
+   - Pressure-volume relationships
+
+2. **Thermodynamics**
+   - Heat transfer mechanisms
+   - Entropy and disorder
+   - Maxwell's Demon paradox
+
+3. **Statistical Mechanics**
+   - Maxwell-Boltzmann distribution
+   - Equipartition theorem
+   - Phase transitions
+
+
+
+### Classroom Activities
+
+1. **Heat Transfer Lab**
+   - Observe temperature equalization
+   - Measure heat transfer rates
+   - Study conduction vs. radiation
+
+2. **Gas Laws Investigation**
+   - Boyle's Law: Pressure vs. Volume
+   - Charles's Law: Volume vs. Temperature
+   - Ideal Gas Law relationships
+
+3. **Statistical Analysis**
+   - Speed distribution histograms
+   - Temperature fluctuations
+   - Entropy calculations
+
+## Browser Compatibility
+
+### Supported Browsers
+- **Chrome/Edge (recommended)**: Full WebGL 2.0 support with hardware acceleration
+- **Firefox**: WebGL 2.0 with some limitations, may fallback to WebGL 1.0
+- **Safari**: WebGL 1.0 fallback mode (WebGL 2.0 not fully supported)
+- **Mobile browsers**: Touch interaction support, automatic performance scaling
+- **Legacy browsers**: Automatic fallback to Canvas 2D rendering
+
+### System Requirements
+- **RAM**: 2GB minimum, 4GB recommended for 50k+ particles
+- **GPU**: WebGL-capable graphics card
+- **CPU**: Multi-core processor for physics calculations
+- **Browser**: Modern browser with JavaScript enabled
+
+### Performance Notes
+- **WebGL acceleration**: Significantly faster than Canvas 2D
+- **Particle limits**: 10k particles on mobile, 100k on desktop
+- **Frame rates**: 60 FPS typical, up to 240 FPS with optimization
+
+## Troubleshooting
+
+### Common Issues
+
+**Simulation runs slowly or freezes**
+- Reduce particle count using the Particles slider
+- Switch to Grid collision mode in Performance tab
+- Increase grid size for better performance
+- Disable gravity/pressure forces if not needed
+
+**WebGL not available**
+- The simulator automatically falls back to Canvas 2D rendering
+- Some advanced features may be limited in Canvas mode
+- Check browser compatibility above
+
+**Particles disappear or behave strangely**
+- Reset the simulation using the Reset button
+- Check wall position and opening settings
+- Ensure particle count is within reasonable limits
+
+**Mobile performance issues**
+- Limit particles to 10,000 or fewer
+- Use Grid collision mode
+- Close other browser tabs to free up resources
+
+**Touch controls not working**
+- Ensure you're using a touch-enabled device
+- Try refreshing the page
+- Check that the simulation area is properly sized
+
+### System Requirements
+- **Minimum**: 2GB RAM, WebGL-capable GPU, modern browser
+- **Recommended**: 4GB+ RAM, dedicated GPU, Chrome/Edge browser
+- **Mobile**: 3GB+ RAM, recent iOS/Android device
+
+## Contributing
+
+### Development Setup
+
+1. **Download the file**
+   ```bash
+   # Download sim.html - single self-contained file
+   # No repository cloning required
+   ```
+
+2. **Edit directly**
+   ```bash
+   # Open sim.html in any text editor
+   # All code (HTML, CSS, JavaScript) is embedded in one file
+   ```
+
+3. **Open in browser**
+   ```bash
+   # Simply open sim.html in your browser
+   # Changes are reflected immediately on refresh
+   ```
+
+4. **Development tools**
+   - Use browser developer tools for debugging
+   - Chrome DevTools performance profiler for optimization
+   - WebGL Inspector for rendering debugging
+   - Text editor with JavaScript/HTML/CSS syntax highlighting
+
+### Code Structure
+
+```
+sim.html (Single self-contained file)
+├── CSS Styles (Embedded)
+│   ├── Dark theme with CSS variables
+│   ├── Responsive layout and controls
+│   ├── Tooltip system for help text
+│   └── Custom sliders and switches
+├── JavaScript Modules (Embedded)
+│   ├── Configuration object (global settings)
+│   ├── PhysicsModule (core physics engine)
+│   ├── Renderer (WebGL 2.0/Canvas 2D)
+│   ├── BondSystem (molecular bonding)
+│   ├── GraphManager (real-time graphs)
+│   └── UI event handlers and tooltips
+└── HTML Structure
+    ├── Tabbed control panels
+    ├── Canvas elements (simulation + overlay)
+    ├── Statistics panel with live metrics
+    └── Real-time temperature graphs
+```
+
+### Adding New Features
+
+1. **Physics features**: Add to PhysicsModule.update() function
+2. **UI controls**: Add to wireUI() function with appropriate HTML
+3. **Visualization**: Extend Renderer class methods
+4. **Performance**: Profile and optimize new code paths
+
+## Changelog
+
+### Version 1.0.0
+- **Initial release** with complete particle physics simulation
+- **WebGL 2.0 rendering** with Canvas 2D fallback
+- **Advanced physics features**: Maxwell's Demon, Node/Bond system
+- **Real-time performance monitoring** and optimization
+- **Educational demonstrations** of thermodynamic principles
+- **Cross-platform compatibility** with touch support
+
+### Key Features Added
+- Particle count up to 100,000 with adaptive performance
+- Interactive mouse forces (divergence and curl)
+- Real-time temperature control and visualization
+- Multiple collision detection modes (SAP/Grid)
+- Comprehensive statistics and graphing
+- Mobile-responsive design with touch controls
+
+## License
+
+This project is open source and available under the MIT License. See LICENSE file for details.
 
 ---
 
-NEW FEATURE SCREENSHOT!!!
-<img width="1910" height="981" alt="image" src="https://github.com/user-attachments/assets/1eff527d-8a88-40ac-a1d6-4e683dd19306" />
+**Created with ❤️ for physics education and simulation enthusiasts**
 
-
-## 💡 Tips & Tricks
-
-### For Educators
-
-- Start students with simple setups (few particles, large radius)
-- Use the pause button to discuss what's happening
-- Reset graphs when starting new experiments
-- Uncap FPS to speed through equilibrium demonstrations
-
-### For Visual Learners
-
-- Large particles (radius 8+) make individual collisions visible
-- Extreme temperatures (50 vs 30,000) create dramatic color contrasts
-- Grid mode with gravity creates beautiful clustering patterns
-
-### For Performance Testing
-
-- See how many particles your device can handle
-- Test different collision modes
-- Experiment with all force combinations
-
----
-
-## 🔧 Troubleshooting
-
-**Simulation running slowly?**
-
-- Reduce particle count or switch to Grid mode
-- Turn off Gravity and Pressure for 10,000+ particles
-- Lower Substeps to 1-2
-
-**Simulation frozen or hanging?**
-
-- **Reset all settings to defaults** - sometimes extreme combinations cause issues
-- Hit Reset button to clear corrupted particle states
-- Reload the page if completely stuck
-
-**Particles behaving weirdly?**
-
-- Hit Reset to clear any accumulated errors
-- Check if Max Speed is too low
-- Make sure Pipe Height isn't at 0% when you want mixing
-
-**Graphs not updating?**
-
-- They update automatically - wait a few seconds
-- Hit Reset to clear old data
-
-**Maxwell's Demon not working?**
-
-- Make sure there's actually a speed difference between sides
-- Adjust Demon Threshold - try values between 10-100
-- The demon works even with pipes closed!
-
----
-
-## 🌟 Advanced Notes
-
-This simulation uses optimized algorithms to handle thousands of particles in real-time:
-
-- **Spatial partitioning** for efficient collision detection
-- **WebGL rendering** when available (falls back to 2D canvas)
-- **Adaptive physics stepping** for smooth performance
-- **Force approximation** for gravity/pressure calculations
-
-The physics engine separates collision detection (SAP vs Grid) from force calculations, allowing you to mix and match for different effects and performance characteristics.
-
----
-
-**Have fun exploring the invisible world of particle physics! 🚀**
-
-## 🎯 Push the Limits!
-
-**Don't be afraid to break things!** This simulation is built to handle extreme conditions:
-
-- Crank particles to 120,000 and see what happens
-- Turn on ALL forces at once and watch chaos unfold
-- Set ridiculous temperatures (30,000 vs 0) and observe the mayhem
-- Find the breaking point of your device - where does it start to lag?
-- Discover weird edge cases and unexpected behaviors
-- **You are only limited by your imagination!**
-
-The best way to learn physics is to push systems beyond their normal operating ranges. Go wild, experiment, and see what fascinating phenomena emerge from the complex interactions of simple rules.
-
----
-
-*Remember: This is a simplified model - real gases have quantum effects, intermolecular forces, and other complexities not shown here. But the fundamental principles are all accurate!*
+For questions or feedback, please open an issue on the project repository.
