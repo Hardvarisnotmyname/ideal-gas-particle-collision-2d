@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frequency Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  /* --- ALL ORIGINAL STYLES PRESERVED --- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #080c10;
+    --panel: #0d1520;
+    --border: #1a3a5c;
+    --glow: #00d4ff;
+    --glow2: #0077ff;
+    --text: #c8e8ff;
+    --dim: #3a5a7a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(ellipse, rgba(0,100,200,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .page-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 2rem;
+    text-align: center; /* Ensure title stays centered */
+  }
+  
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2.5rem 3rem;
+    width: min(660px, 92vw);
+    position: relative;
+    box-shadow: 0 0 0 1px rgba(0,212,255,0.04), 0 0 60px rgba(0,80,160,0.25), inset 0 0 40px rgba(0,0,0,0.4);
+  }
+  .panel::before, .panel::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: var(--glow);
+    border-style: solid;
+    opacity: 0.6;
+  }
+  .panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .panel::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .freq-display { text-align: center; margin-bottom: 1.5rem; }
+  .freq-value {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(4rem, 14vw, 7.5rem);
+    line-height: 1;
+    color: var(--glow);
+    text-shadow: 0 0 20px rgba(0,212,255,0.9), 0 0 60px rgba(0,212,255,0.4), 0 0 120px rgba(0,100,255,0.2);
+    letter-spacing: -0.02em;
+    cursor: pointer;
+    user-select: none;
+  }
+  .freq-value.playing {
+    text-shadow: 0 0 10px rgba(0,212,255,1), 0 0 40px rgba(0,212,255,0.8), 0 0 100px rgba(0,180,255,0.5), 0 0 200px rgba(0,100,255,0.2);
+  }
+  .freq-unit { font-family: 'Orbitron', monospace; font-size: clamp(1rem, 3vw, 1.4rem); color: var(--glow2); letter-spacing: 0.3em; margin-top: 0.4rem; opacity: 0.8; }
+
+  .visualiser-wrap {
+    margin-bottom: 1.8rem;
+    border: 1px solid var(--border);
+    background: #050a0f;
+    position: relative;
+    overflow: hidden;
+  }
+  .visualiser-wrap::before {
+    content: 'WAVEFORM';
+    position: absolute;
+    top: 6px; left: 10px;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    z-index: 2;
+  }
+  canvas#viz { display: block; width: 100%; height: 110px; }
+
+  .slider-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--dim); margin-bottom: 0.8rem; letter-spacing: 0.1em; }
+  .slider-wrap { padding: 0.6rem 0; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%; height: 4px;
+    background: linear-gradient(to right, var(--glow2) var(--pct, 0%), var(--border) var(--pct, 0%));
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    background: var(--bg);
+    border: 2px solid var(--glow);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0,212,255,0.8);
+    cursor: pointer;
+  }
+
+  .ticks { display: flex; justify-content: space-between; margin-top: 0.5rem; }
+  .tick { width: 1px; height: 6px; background: var(--border); }
+  .tick.major { height: 10px; background: var(--dim); }
+
+  .status-bar { display: flex; align-items: center; margin-top: 2rem; padding-top: 1.2rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--dim); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); margin-right: 0.6rem; }
+  .dot.active { background: #00ff88; box-shadow: 0 0 8px #00ff88; animation: pulse 1.2s infinite; }
+
+  /* Wave panel */
+  .wave-panel { margin-top: 1rem; background: var(--panel); border: 1px solid var(--border); padding: 1.6rem 2rem; width: min(660px, 92vw); position: relative; }
+  .wave-panel-label { font-size: 0.62rem; letter-spacing: 0.25em; color: var(--dim); text-transform: uppercase; margin-bottom: 1.2rem; }
+  
+  /* GRID UPDATED FOR PHASE DIALS */
+  .wave-buttons { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 0.8rem; align-items: start; }
+  .wave-col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+  .wave-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.62rem; padding: 0.9rem 0.4rem 0.7rem;
+    width: 100%; cursor: pointer; text-transform: uppercase;
+  }
+  .wave-btn.active { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.05); }
+  .wave-btn svg { width: 46px; height: 20px; opacity: 0.35; stroke: currentColor; fill: none; stroke-width: 2; }
+  .wave-btn.active svg { opacity: 1; filter: drop-shadow(0 0 3px var(--glow)); }
+
+  /* New Phase Slider Styles */
+  .phase-control { width: 100%; text-align: center; }
+  .phase-label { font-size: 0.55rem; color: var(--dim); letter-spacing: 0.1em; display: block; margin-bottom: 4px; }
+  .phase-slider { height: 2px !important; }
+  .phase-slider::-webkit-slider-thumb { width: 12px !important; height: 12px !important; }
+
+  .wave-btn-all-off {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.55rem; padding: 0.7rem 0.75rem;
+    cursor: pointer; writing-mode: vertical-rl; text-transform: uppercase; height: 100%;
+  }
+  .amp-row { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+  .amp-value-text { font-family: 'Orbitron', monospace; font-size: 0.75rem; color: var(--glow); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Frequency Generator</div>
+
+<div class="panel">
+  <div class="freq-display"><div class="freq-value" id="freqValue">440</div><div class="freq-unit">Hz</div></div>
+  <div class="visualiser-wrap"><canvas id="viz"></canvas></div>
+  <div class="slider-labels"><span>1 Hz</span><span>4 kHz</span><span>8 kHz</span><span>12 kHz</span><span>16 kHz</span></div>
+  <div class="slider-wrap"><input type="range" id="freqSlider" min="1" max="16000" step="1" value="440"></div>
+  <div class="ticks" id="ticks"></div>
+  <div class="amp-row">
+    <div class="amp-labels"><span style="font-size:0.62rem; letter-spacing:0.25em; color:var(--dim)">AMPLITUDE</span><span class="amp-value-text" id="ampValue">0 dB</span></div>
+    <div class="slider-wrap"><input type="range" id="ampSlider" min="-40" max="10" step="1" value="0"></div>
+  </div>
+  <div class="status-bar"><div class="dot" id="statusDot"></div><span id="statusText">STANDBY — CLICK FREQUENCY TO PLAY</span></div>
+</div>
+
+<div class="wave-panel">
+  <div class="wave-panel-label">Waveform mix &mdash; toggle any combination</div>
+  <div class="wave-buttons">
+    <div class="wave-col">
+      <button class="wave-btn active" data-wave="sine">
+        <svg viewBox="0 0 46 20"><path d="M0,10 C5.5,10 5.5,1 11,1 C16.5,1 16.5,19 23,19 C29.5,19 29.5,1 35,1 C40.5,1 40.5,10 46,10"/></svg>
+        Sine
+      </button>
+      <div class="phase-control">
+        <span class="phase-label">PHASE: <span id="p-sine">0</span>°</span>
+        <input type="range" class="phase-slider" data-wave="sine" min="0" max="360" value="0">
+      </div>
+    </div>
+
+    <div class="wave-col">
+      <button class="wave-btn" data-wave="square">
+        <svg viewBox="0 0 46 20"><polyline points="0,10 0,2 11.5,2 11.5,18 23,18 23,2 34.5,2 34.5,18 46,18 46,10"/></svg>
+        Square
+      </button>
+      <div class="phase-control">
+        <span class="phase-label">PHASE: <span id="p-square">0</span>°</span>
+        <input type="range" class="phase-slider" data-wave="square" min="0" max="360" value="0">
+      </div>
+    </div>
+
+    <div class="wave-col">
+      <button class="wave-btn" data-wave="sawtooth">
+        <svg viewBox="0 0 46 20"><polyline points="0,18 11.5,2 11.5,18 23,2 23,18 34.5,2 34.5,18 46,2"/></svg>
+        Saw
+      </button>
+      <div class="phase-control">
+        <span class="phase-label">PHASE: <span id="p-sawtooth">0</span>°</span>
+        <input type="range" class="phase-slider" data-wave="sawtooth" min="0" max="360" value="0">
+      </div>
+    </div>
+
+    <div class="wave-col">
+      <button class="wave-btn" data-wave="triangle">
+        <svg viewBox="0 0 46 20"><polyline points="0,10 5.75,2 17.25,18 28.75,2 40.25,18 46,10"/></svg>
+        Tri
+      </button>
+      <div class="phase-control">
+        <span class="phase-label">PHASE: <span id="p-triangle">0</span>°</span>
+        <input type="range" class="phase-slider" data-wave="triangle" min="0" max="360" value="0">
+      </div>
+    </div>
+
+    <button class="wave-btn-all-off" id="allOffBtn">All Off</button>
+  </div>
+</div>
+
+<script>
+  const slider = document.getElementById('freqSlider');
+  const freqValue = document.getElementById('freqValue');
+  const ampSlider = document.getElementById('ampSlider');
+  const ampValueEl = document.getElementById('ampValue');
+  const canvas = document.getElementById('viz');
+  const ctx2d = canvas.getContext('2d');
+
+  // --- PHASE TRACKING ACCUMULATOR ---
+  let lastRefTime = 0;
+  let accumulatedPhase = 0; // Tracks cycle position (0 to 1)
+
+  function updatePhaseAccumulator() {
+    if (!playing || !actx) return;
+    const now = actx.currentTime;
+    const hz = parseInt(slider.value);
+    accumulatedPhase = (accumulatedPhase + (now - lastRefTime) * hz) % 1.0;
+    lastRefTime = now;
+  }
+
+  function getNextSyncTime() {
+    updatePhaseAccumulator();
+    const hz = parseInt(slider.value);
+    const remaining = 1.0 - accumulatedPhase;
+    let syncTime = actx.currentTime + (remaining / hz);
+    // Safety buffer for scheduling
+    while (syncTime < actx.currentTime + 0.04) syncTime += (1.0 / hz);
+    return syncTime;
+  }
+
+  // --- AUDIO LOGIC ---
+  let actx = null, masterGain = null, analyser = null;
+  const oscillators = new Map();
+  const activeWaves = new Set(['sine']);
+  const phaseOffsets = { sine: 0, square: 0, sawtooth: 0, triangle: 0 };
+  let playing = false;
+
+  function dbToLinear(db) { return Math.pow(10, db / 20) * 0.25; }
+
+  function initAudio() {
+    if (actx) return;
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = actx.createGain();
+    masterGain.gain.setValueAtTime(dbToLinear(parseInt(ampSlider.value)), actx.currentTime);
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 2048;
+    masterGain.connect(analyser);
+    analyser.connect(actx.destination);
+  }
+
+  function startWave(type, syncTime = null) {
+    if (oscillators.has(type)) return;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    const delay = actx.createDelay(1.0); // Handles manual phase shift
+
+    const hz = parseInt(slider.value);
+    osc.type = type;
+    osc.frequency.setValueAtTime(hz, actx.currentTime);
+    
+    // Set manual phase via delay: delay = (deg/360) * (1/hz)
+    const dTime = (phaseOffsets[type] / 360) * (1 / hz);
+    delay.delayTime.setValueAtTime(dTime, actx.currentTime);
+
+    osc.connect(delay);
+    delay.connect(gain);
+    gain.connect(masterGain);
+    
+    const startTime = syncTime || actx.currentTime;
+    osc.start(startTime);
+    oscillators.set(type, { osc, gain, delay });
+    rebalanceGains();
+  }
+
+  function stopWave(type) {
+    if (!oscillators.has(type)) return;
+    const { osc, gain } = oscillators.get(type);
+    gain.gain.setTargetAtTime(0, actx.currentTime, 0.01);
+    osc.stop(actx.currentTime + 0.05);
+    oscillators.delete(type);
+    rebalanceGains();
+  }
+
+  function rebalanceGains() {
+    const n = Math.max(1, oscillators.size);
+    oscillators.forEach(({ gain }) => gain.gain.setTargetAtTime(1/n, actx.currentTime, 0.02));
+  }
+
+  // --- UI EVENTS ---
+  slider.addEventListener('input', () => {
+    updatePhaseAccumulator();
+    const hz = parseInt(slider.value);
+    freqValue.textContent = hz.toLocaleString();
+    updateSliderFill(slider);
+    if (playing) {
+      oscillators.forEach(({ osc, delay }, type) => {
+        osc.frequency.setTargetAtTime(hz, actx.currentTime, 0.01);
+        const dTime = (phaseOffsets[type] / 360) * (1 / hz);
+        delay.delayTime.setTargetAtTime(dTime, actx.currentTime, 0.01);
+      });
+    }
+  });
+
+  document.querySelectorAll('.phase-slider').forEach(s => {
+    s.addEventListener('input', (e) => {
+      const wave = e.target.dataset.wave;
+      const deg = parseInt(e.target.value);
+      phaseOffsets[wave] = deg;
+      document.getElementById(`p-${wave}`).textContent = deg;
+      updateSliderFill(e.target);
+      if (playing && oscillators.has(wave)) {
+        const hz = parseInt(slider.value);
+        const dTime = (deg / 360) * (1 / hz);
+        oscillators.get(wave).delay.delayTime.setTargetAtTime(dTime, actx.currentTime, 0.02);
+      }
+    });
+    updateSliderFill(s);
+  });
+
+  freqValue.addEventListener('click', () => {
+    initAudio();
+    if (!playing) {
+      lastRefTime = actx.currentTime;
+      accumulatedPhase = 0;
+      const start = actx.currentTime + 0.05;
+      activeWaves.forEach(w => startWave(w, start));
+      playing = true;
+      document.getElementById('statusDot').classList.add('active');
+      document.getElementById('statusText').textContent = 'GENERATING';
+      freqValue.classList.add('playing');
+      drawLoop();
+    } else {
+      oscillators.forEach(n => n.osc.stop());
+      oscillators.clear();
+      playing = false;
+      document.getElementById('statusDot').classList.remove('active');
+      document.getElementById('statusText').textContent = 'STANDBY — CLICK TO PLAY';
+      freqValue.classList.remove('playing');
+      drawSilence();
+    }
+  });
+
+  document.querySelectorAll('.wave-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wave = btn.dataset.wave;
+      if (activeWaves.has(wave)) {
+        activeWaves.delete(wave);
+        btn.classList.remove('active');
+        if (playing) stopWave(wave);
+      } else {
+        activeWaves.add(wave);
+        btn.classList.add('active');
+        if (playing) startWave(wave, getNextSyncTime());
+      }
+    });
+  });
+
+  document.getElementById('allOffBtn').addEventListener('click', () => {
+    activeWaves.clear();
+    document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+    if (playing) { oscillators.forEach(n => n.osc.stop()); oscillators.clear(); }
+  });
+
+  ampSlider.addEventListener('input', () => {
+    const db = parseInt(ampSlider.value);
+    ampValueEl.textContent = (db > 0 ? '+' : '') + db + ' dB';
+    updateSliderFill(ampSlider);
+    if (masterGain) masterGain.gain.setTargetAtTime(dbToLinear(db), actx.currentTime, 0.02);
+  });
+
+  function updateSliderFill(el) {
+    const pct = ((el.value - el.min) / (el.max - el.min)) * 100;
+    el.style.setProperty('--pct', pct + '%');
+  }
+
+  // --- PRESERVED ORIGINAL VISUALIZER LOGIC (Catmull-Rom & Hysteresis) ---
+  const dataArray = new Uint8Array(2048);
+  function cubicInterp(p0, p1, p2, p3, t) {
+    const t2 = t * t, t3 = t2 * t;
+    return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2*p0 - 5*p1 + 4*p2 - p3) * t2 + (-p0 + 3*p1 - 3*p2 + p3) * t3);
+  }
+  function sampleAt(data, idx) {
+    const i = Math.floor(idx), t = idx - i, len = data.length;
+    const p0 = (data[Math.max(0, i-1)]/128)-1, p1 = (data[Math.min(len-1, i)]/128)-1;
+    const p2 = (data[Math.min(len-1, i+1)]/128)-1, p3 = (data[Math.min(len-1, i+2)]/128)-1;
+    return cubicInterp(p0, p1, p2, p3, t);
+  }
+
+  function drawLoop() {
+    if (!playing) return;
+    requestAnimationFrame(drawLoop);
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.width/dpr, H = canvas.height/dpr;
+    analyser.getByteTimeDomainData(dataArray);
+    ctx2d.clearRect(0, 0, W, H);
+    
+    let start = 0, armed = false;
+    for (let i = 2; i < dataArray.length - 1; i++) {
+      if (!armed && dataArray[i] < 123) armed = true;
+      if (armed && dataArray[i-1] < 133 && dataArray[i] >= 133) { start = i; break; }
+    }
+
+    const hz = Math.max(1, parseInt(slider.value));
+    const samplesPerCycle = actx.sampleRate / hz;
+    const pixelsPerSample = W / (samplesPerCycle * 2.5);
+    let cyclesToShow = pixelsPerSample < 1 ? 6.5 : pixelsPerSample < 2 ? 5 : pixelsPerSample < 4 ? 3.5 : 2.5;
+    const show = Math.max(Math.min(Math.ceil(samplesPerCycle * cyclesToShow), dataArray.length - start - 2), 32);
+
+    function trace() {
+      ctx2d.beginPath();
+      for (let px = 0; px <= W; px++) {
+        const v = sampleAt(dataArray, start + (px / W) * show);
+        px === 0 ? ctx2d.moveTo(px, H/2 + v*(H/2)*0.82) : ctx2d.lineTo(px, H/2 + v*(H/2)*0.82);
+      }
+      ctx2d.stroke();
+    }
+
+    ctx2d.save(); ctx2d.shadowColor = 'rgba(0,212,255,0.5)'; ctx2d.shadowBlur = 10;
+    ctx2d.strokeStyle = 'rgba(0,212,255,0.3)'; ctx2d.lineWidth = 4; trace(); ctx2d.restore();
+    ctx2d.strokeStyle = '#00d4ff'; ctx2d.lineWidth = 1.8; trace();
+  }
+
+  function drawSilence() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.width/dpr, H = canvas.height/dpr;
+    ctx2d.clearRect(0, 0, W, H); ctx2d.strokeStyle = 'rgba(0,212,255,0.2)';
+    ctx2d.lineWidth = 1.5; ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
+  }
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentElement.clientWidth;
+    canvas.width = w * dpr; canvas.height = 110 * dpr;
+    canvas.style.width = w + 'px'; canvas.style.height = '110px';
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // Init Ticks
+  const ticksEl = document.getElementById('ticks');
+  for (let i = 0; i <= 40; i++) {
+    const t = document.createElement('div');
+    t.className = 'tick' + (i % 8 === 0 ? ' major' : '');
+    ticksEl.appendChild(t);
+  }
+
+  window.onresize = resize; resize(); updateSliderFill(slider); updateSliderFill(ampSlider); drawSilence();
+</script>
+</body>
+</html>
