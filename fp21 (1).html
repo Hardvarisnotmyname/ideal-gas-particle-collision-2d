@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Frequency Generator - fp21</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #080c10; --panel: #0d1520; --border: #1a3a5c;
+    --glow: #00d4ff; --glow2: #0077ff; --text: #c8e8ff; --dim: #3a5a7a;
+    --drawer-w: 90px;
+  }
+  body {
+    background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 1.5rem 0 4rem; overflow-x: hidden; position: relative;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+    pointer-events: none; z-index: 100;
+  }
+  body::after {
+    content: ''; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(ellipse, rgba(0,100,200,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .page-title {
+    font-family: 'Orbitron', monospace; font-weight: 700; font-size: clamp(0.7rem, 2vw, 0.9rem);
+    letter-spacing: 0.5em; text-transform: uppercase; color: var(--dim);
+    margin-bottom: 1.2rem; text-align: center;
+  }
+
+  /* ── DUAL MASTER PANELS ───────────────────────────── */
+  .master-row { display: flex; gap: 0.8rem; width: min(700px, 94vw); margin-bottom: 1.2rem; }
+  .master-panel {
+    flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
+    padding: 1.2rem 1rem 1rem; position: relative;
+    box-shadow: 0 0 40px rgba(0,80,160,0.2), inset 0 0 30px rgba(0,0,0,0.4);
+  }
+  .master-panel::before, .master-panel::after {
+    content: ''; position: absolute; width: 10px; height: 10px;
+    border-color: var(--glow); border-style: solid; opacity: 0.5;
+  }
+  .master-panel::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .master-panel::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+  .master-side-label {
+    font-family: 'Orbitron', monospace; font-size: 0.55rem; letter-spacing: 0.3em;
+    color: var(--dim); text-align: center; margin-bottom: 0.6rem;
+  }
+  .freq-display { text-align: center; margin-bottom: 0.8rem; }
+  .freq-value {
+    font-family: 'Orbitron', monospace; font-weight: 900; font-size: clamp(2rem, 8vw, 3.2rem);
+    line-height: 1; color: var(--glow); cursor: pointer; user-select: none;
+    text-shadow: 0 0 20px rgba(0,212,255,0.9), 0 0 60px rgba(0,212,255,0.4);
+    letter-spacing: -0.02em; transition: text-shadow 0.3s;
+  }
+  .freq-value.playing { text-shadow: 0 0 10px rgba(0,212,255,1), 0 0 40px rgba(0,212,255,0.8), 0 0 100px rgba(0,180,255,0.5); }
+
+  /* ── VISUALIZERS ─────────────────────────────────── */
+  .viz-section { width: min(700px, 94vw); margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .viz-row { display: flex; gap: 0.5rem; width: 100%; }
+  .visualiser-wrap { border: 1px solid var(--border); background: #050a0f; position: relative; overflow: hidden; flex: 1; }
+  .visualiser-wrap.full { width: 100%; }
+  .visualiser-wrap .viz-label { position: absolute; top: 5px; left: 8px; font-size: 0.5rem; letter-spacing: 0.18em; color: var(--dim); z-index: 2; font-family: 'Orbitron', monospace; }
+  .visualiser-wrap .viz-label.right { color: #aa5522; }
+  canvas { display: block; width: 100%; }
+  canvas.wave-main { height: 90px; } canvas.wave-half { height: 65px; }
+  canvas.fft-main  { height: 80px; } canvas.fft-half  { height: 60px; }
+
+  /* ── VIZ COLLAPSIBLE BARS ────────────────────────── */
+  .viz-collapse-toggle {
+    width: min(700px, 94vw); margin-bottom: 0.3rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; gap: 0.8rem; user-select: none;
+    background: rgba(13,21,32,0.6); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0.4rem 1rem; transition: border-color 0.2s, background 0.2s;
+  }
+  .viz-collapse-toggle:hover { border-color: var(--dim); background: rgba(20,32,48,0.8); }
+  .viz-collapse-toggle.open { border-color: var(--glow); }
+  .viz-collapse-toggle.open .vc-label { color: var(--glow); }
+  .viz-collapse-toggle.open .vc-arrow { transform: rotate(180deg); color: var(--glow); }
+  .vc-bar { flex: 1; height: 1px; background: var(--border); }
+  .vc-label { font-family: 'Orbitron', monospace; font-size: 0.52rem; letter-spacing: 0.28em; color: var(--dim); display: flex; align-items: center; gap: 0.5rem; }
+  .vc-arrow { font-size: 0.45rem; transition: transform 0.25s; display: inline-block; color: var(--dim); }
+  .viz-collapse-content { width: min(700px, 94vw); overflow: hidden; max-height: 0; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+  .viz-collapse-content.open { max-height: 600px; }
+
+  /* ── LISSAJOUS ───────────────────────────────────── */
+  .lissajous-section { width: min(700px, 94vw); margin-bottom: 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+  .lissajous-wrap { position: relative; background: #020508; border: 1px solid var(--border); width: 80%; aspect-ratio: 1 / 1; overflow: hidden; }
+  .lissajous-wrap .viz-label { position: absolute; top: 5px; left: 8px; z-index: 2; }
+  .liss-axis-x { position: absolute; bottom: 4px; right: 6px; font-size: 0.54rem; font-family: 'Orbitron', monospace; color: rgba(255,136,51,0.6); letter-spacing: 0.1em; pointer-events: none; }
+  .liss-axis-y { position: absolute; top: 6px; left: 6px; font-size: 0.54rem; font-family: 'Orbitron', monospace; color: rgba(68,187,255,0.6); letter-spacing: 0.1em; pointer-events: none; writing-mode: vertical-rl; transform: rotate(180deg); }
+  #lissCanvas { display: block; width: 100%; height: 100%; }
+  .liss-autoscale-btn {
+    position: absolute; bottom: 6px; left: 8px; z-index: 3;
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.50rem; letter-spacing: 0.12em;
+    padding: 2px 7px; border-radius: 2px; cursor: pointer; transition: all 0.15s;
+  }
+  .liss-autoscale-btn:hover { border-color: var(--dim); }
+  .liss-autoscale-btn.active { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.08); box-shadow: 0 0 6px rgba(0,212,255,0.2); }
+
+  /* ── GENERIC COLLAPSIBLE BAR ─────────────────────── */
+  .collapse-toggle {
+    width: min(700px, 94vw); margin-bottom: 0.5rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; gap: 0.8rem; user-select: none;
+    background: rgba(13,21,32,0.6); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0.5rem 1rem; transition: border-color 0.2s, background 0.2s;
+  }
+  .collapse-toggle:hover { border-color: var(--dim); background: rgba(20,32,48,0.8); }
+  .collapse-toggle.open { border-color: var(--glow); }
+  .collapse-toggle.open .ctog-label { color: var(--glow); }
+  .collapse-toggle.open .ctog-arrow { transform: rotate(180deg); color: var(--glow); }
+  .ctog-bar { flex: 1; height: 1px; background: var(--border); }
+  .ctog-label { font-family: 'Orbitron', monospace; font-size: 0.54rem; letter-spacing: 0.3em; color: var(--dim); display: flex; align-items: center; gap: 0.5rem; }
+  .ctog-arrow { font-size: 0.5rem; transition: transform 0.25s; display: inline-block; color: var(--dim); }
+  .collapse-content { width: min(700px, 94vw); overflow: hidden; max-height: 0; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
+  .collapse-content.open { max-height: 2000px; }
+
+  /* ── SLIDER / CTRL SHARED ────────────────────────── */
+  .slider-label-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.55rem; color: var(--glow); font-family: 'Orbitron', monospace; margin-bottom: 0.3rem; margin-top: 0.6rem; }
+  .slider-label-title { letter-spacing: 0.15em; color: var(--dim); font-size: 0.5rem; }
+  .ctrl-row { display: flex; align-items: center; gap: 0.5rem; width: 100%; margin-bottom: 0.5rem; }
+  .ctrl-btn { background: transparent; border: 1px solid var(--border); color: var(--glow); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; border-radius: 2px; flex-shrink: 0; }
+  .ctrl-btn:active { background: rgba(0,212,255,0.1); border-color: var(--glow); }
+  .slider-wrap { flex-grow: 1; position: relative; display: flex; align-items: center; height: 18px; }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 3px;
+    background: linear-gradient(to right, var(--glow2) var(--pct, 0%), var(--border) var(--pct, 0%));
+    outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--bg); border: 2px solid var(--glow); border-radius: 50%; box-shadow: 0 0 6px rgba(0,212,255,0.8); cursor: pointer; }
+  .amp-row { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
+  .amp-labels { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .amp-value-text { font-family: 'Orbitron', monospace; font-size: 0.6rem; color: var(--glow); }
+  .status-bar { display: flex; align-items: center; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); font-size: 0.6rem; color: var(--dim); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); margin-right: 0.5rem; flex-shrink:0; }
+  .dot.active { background: #00ff88; box-shadow: 0 0 6px #00ff88; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%{opacity:1} 50%{opacity:0.4} 100%{opacity:1} }
+  .ind-avg-row { display: flex; align-items: center; justify-content: center; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); gap: 0.4rem; }
+  .ind-avg-label { font-size: 0.45rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.15em; }
+  .ind-avg-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: 'Orbitron', monospace; font-size: 0.45rem; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 2px; cursor: pointer; transition: all 0.15s; }
+  .ind-avg-btn.active { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.08); box-shadow: 0 0 6px rgba(0,212,255,0.2); }
+
+  /* ── WAVE GRID ───────────────────────────────────── */
+  .wave-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: min(700px, 94vw); margin-bottom: 1rem; }
+  .wave-row-label { grid-column: 1 / -1; font-family: 'Orbitron', monospace; font-size: 0.55rem; letter-spacing: 0.3em; color: var(--dim); text-align: center; padding: 0.3rem 0 0.1rem; border-top: 1px solid #0d1e2e; margin-top: 0.3rem; }
+  .wave-unit { background: rgba(13,21,32,0.6); border: 1px solid var(--border); padding: 1rem 0.8rem; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); border-radius: 4px; }
+  .unit-val { font-family: 'Orbitron', monospace; font-size: 0.75rem; color: var(--glow); letter-spacing: 0.05em; text-shadow: 0 0 8px rgba(0,212,255,0.4); }
+  .top-val { margin-bottom: 0.8rem; } .bottom-val { margin-top: 0.8rem; margin-bottom: 1rem; }
+  .dial-box { position: relative; width: 100px; height: 100px; cursor: crosshair; touch-action: none; }
+  .dial-track { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--glow) var(--p, 0%), var(--border) 0); -webkit-mask: radial-gradient(transparent 42px, black 43px); mask: radial-gradient(transparent 42px, black 43px); }
+  .dial-thumb { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 2px solid var(--glow); top: -7px; left: calc(50% - 7px); transform-origin: 7px 57px; box-shadow: 0 0 8px rgba(0,212,255,0.8); pointer-events: none; transform: rotate(var(--p-deg,0deg)); z-index: 2; }
+  .dial-center { position: absolute; inset: 10px; border-radius: 50%; background: #050a0f; border: 2px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.2s ease; z-index: 1; }
+  .wave-unit.on .dial-center { border-color: var(--glow); box-shadow: 0 0 16px rgba(0,212,255,0.2), inset 0 0 12px rgba(0,212,255,0.1); }
+  .dial-center span { font-size: 0.48rem; color: var(--dim); letter-spacing: 0.12em; margin-bottom: 3px; }
+  .wave-unit.on .dial-center span { color: var(--glow); text-shadow: 0 0 5px var(--glow); }
+  .dial-center svg { width: 34px; height: 16px; fill: none; stroke: var(--dim); stroke-width: 2; transition: all 0.2s; }
+  .wave-unit.on .dial-center svg { stroke: var(--glow); filter: drop-shadow(0 0 3px var(--glow)); }
+  .slave-ctrl-row { display: flex; align-items: center; gap: 0.4rem; width: 100%; padding: 0 0.3rem; }
+  .slave-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; border-radius: 2px; flex-shrink: 0; }
+  .slave-btn:active { background: rgba(0,212,255,0.1); color: var(--glow); border-color: var(--glow); }
+
+  /* ── CORNER LABELS ───────────────────────────────── */
+  .wave-unit-side {
+    position: absolute; top: 4px; left: 6px;
+    font-size: 0.51rem; font-family: 'Orbitron', monospace;
+    color: var(--dim); letter-spacing: 0.1em;
+  }
+  .wave-unit-id {
+    position: absolute; top: 4px; right: 6px;
+    font-size: 0.51rem; font-family: 'Orbitron', monospace;
+    color: var(--dim); letter-spacing: 0.1em;
+  }
+  .wave-unit.side-L .wave-unit-side { color: #00aaff; }
+  .wave-unit.side-R .wave-unit-side { color: #ff6600; }
+  .wave-unit.side-L.on .wave-unit-side { color: #44ccff; }
+  .wave-unit.side-R.on .wave-unit-side { color: #ff8833; }
+  .wave-unit.side-L .wave-unit-id { color: rgba(0,170,255,0.5); }
+  .wave-unit.side-R .wave-unit-id { color: rgba(255,102,0,0.5); }
+  .wave-unit.on .wave-unit-id { opacity: 1; }
+
+  /* ── PWM / RAMP SLIDER INSIDE CARD ─────────────── */
+  .unit-extra-slider {
+    width: 100%; padding: 0 0.3rem; margin-top: 0.4rem;
+  }
+  .unit-extra-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.54rem; font-family: 'Orbitron', monospace;
+    color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.2rem;
+  }
+  .unit-extra-label span:last-child { color: var(--glow); }
+  .unit-extra-slider input[type="range"] { height: 2px; }
+  /* snap indicator pip */
+  .snap-pip {
+    position: relative; width: 100%; height: 4px; margin-top: 1px;
+  }
+  .snap-pip::after {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 2px; height: 4px; background: rgba(0,212,255,0.3); border-radius: 1px;
+  }
+
+  /* ── PER-UNIT AMP + MOD CONTROLS ────────────────── */
+  .unit-amp-row { width: 100%; padding: 0 0.3rem; margin-top: 0.5rem; }
+  .unit-amp-label { display: flex; justify-content: space-between; font-size: 0.54rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+  .unit-amp-label span:last-child { color: var(--glow); }
+  .unit-amp-row input[type="range"] { height: 2px; }
+  .unit-mod-controls { width: 100%; padding: 0 0.3rem; margin-top: 0.5rem; }
+  .u-mode-btn { width: 100%; padding: 3px 0; background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: 'Orbitron', monospace; font-size: 0.50rem; letter-spacing: 0.12em; cursor: pointer; border-radius: 2px; transition: all 0.15s; margin-bottom: 0.3rem; }
+  .u-mode-btn:hover { border-color: var(--dim); }
+  .u-mode-btn.signal-mode { border-color: #aa44ff; color: #aa44ff; background: rgba(170,68,255,0.1); box-shadow: 0 0 6px rgba(170,68,255,0.2); }
+  .u-mod-labels { display: none; }
+  .u-mod-pair-label { font-family: 'Orbitron', monospace; font-size: 0.40rem; color: var(--dim); letter-spacing: 0.07em; padding-left: 1px; }
+  .u-mod-sel { background: #050a0f; border: 1px solid var(--border); color: var(--dim); font-family: 'Share Tech Mono', monospace; font-size: 0.47rem; padding: 3px 4px; border-radius: 2px; cursor: pointer; min-width: 0; width: 100%; }
+  .u-mod-sel:focus { outline: none; border-color: var(--glow); color: var(--glow); }
+  .u-mod-sel.active { border-color: #aa44ff; color: #aa44ff; }
+  .u-mod-sel.gate-active { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,0.06); }
+
+  /* ── DUAL-SOURCE MOD GROUPS ──────────────────────── */
+  .u-mod-grid { display: flex; flex-direction: column; gap: 0.22rem; }
+  .u-mod-group { background: rgba(0,0,0,0.25); border: 1px solid rgba(26,58,92,0.6); border-radius: 2px; padding: 0.22rem 0.28rem 0.18rem; }
+  .u-mod-group-label { font-family: 'Orbitron', monospace; font-size: 0.42rem; color: var(--glow); letter-spacing: 0.12em; margin-bottom: 0.12rem; opacity: 0.65; }
+  .u-mod-pair { display: flex; flex-direction: column; gap: 0.04rem; margin-bottom: 0.1rem; }
+  .u-mod-pair:last-child { margin-bottom: 0; }
+  .u-mod-lfo-row { display: none; align-items: center; gap: 0.3rem; margin-top: 0.14rem; }
+  .u-mod-lfo-row.visible { display: flex; }
+  .u-mod-lfo-slider { flex: 1; height: 2px; }
+  .u-mod-lfo-val {
+    font-family: 'Orbitron', monospace; font-size: 0.40rem; color: var(--glow);
+    cursor: pointer; white-space: nowrap; min-width: 44px; text-align: right;
+    border-bottom: 1px dashed rgba(0,212,255,0.35); padding-bottom: 1px;
+    user-select: none; transition: color 0.15s;
+  }
+  .u-mod-lfo-val:hover { color: #fff; border-bottom-color: rgba(255,255,255,0.5); }
+
+  /* ── MOD SECTION COLLAPSE TOGGLE ────────────────── */
+  .u-mod-toggle {
+    width: 100%; padding: 3px 0; background: transparent;
+    border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.44rem; letter-spacing: 0.15em;
+    cursor: pointer; border-radius: 2px; transition: all 0.15s; margin-bottom: 0.25rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  }
+  .u-mod-toggle:hover { border-color: var(--dim); }
+  .u-mod-toggle.open { border-color: rgba(0,212,255,0.4); color: rgba(0,212,255,0.7); }
+  .u-mod-toggle-arrow { font-size: 0.4rem; transition: transform 0.2s; display: inline-block; }
+  .u-mod-toggle.open .u-mod-toggle-arrow { transform: rotate(180deg); }
+  .unit-mod-body { overflow: hidden; max-height: 0; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1); }
+  .unit-mod-body.open { max-height: 800px; }
+
+  /* ── KILL SWITCH ─────────────────────────────────── */
+  .kill-switch { margin-top: 1.5rem; padding: 0.8rem 2.5rem; background: transparent; border: 1px solid #ff4444; color: #ff4444; font-family: 'Orbitron'; letter-spacing: 0.2em; font-size: 0.7rem; cursor: pointer; transition: 0.2s; box-shadow: inset 0 0 10px rgba(255,0,0,0.1); }
+  .kill-switch:hover { background: rgba(255,0,0,0.1); box-shadow: 0 0 15px rgba(255,0,0,0.3); }
+
+  /* ── MIC / INPUT SECTION ─────────────────────────── */
+  .input-section { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+  .input-mode-row { display: flex; align-items: center; justify-content: center; gap: 0.3rem; margin-bottom: 0.5rem; }
+  .input-label { font-size: 0.57rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.12em; margin-right: 0.2rem; }
+  .input-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: 'Orbitron', monospace; font-size: 0.54rem; letter-spacing: 0.08em; padding: 3px 6px; border-radius: 2px; cursor: pointer; transition: all 0.15s; }
+  .input-btn.active { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.08); }
+  .enable-mic-btn { width: 100%; padding: 5px; background: transparent; border: 1px solid var(--dim); color: var(--dim); font-family: 'Orbitron', monospace; font-size: 0.54rem; letter-spacing: 0.12em; cursor: pointer; border-radius: 2px; transition: all 0.2s; margin-bottom: 0.4rem; }
+  .enable-mic-btn.granted { border-color: #00ff88; color: #00ff88; }
+  .enable-mic-btn:hover { border-color: var(--glow); color: var(--glow); }
+  .mic-controls { display: none; }
+  .mic-controls.visible { display: block; }
+  .mic-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--dim); margin-right: 4px; vertical-align: middle; }
+  .mic-dot.active { background: #ff4444; box-shadow: 0 0 5px #ff4444; animation: pulse 1s infinite; }
+
+  /* ── MIC SOURCE + CHUNK SIZE ─────────────────────── */
+  .mic-source-row {
+    display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; flex-wrap: wrap;
+  }
+  .mic-src-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.50rem; letter-spacing: 0.06em;
+    padding: 3px 5px; border-radius: 2px; cursor: pointer; transition: all 0.15s;
+  }
+  .mic-src-btn.active { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,0.06); }
+  .chunk-label { font-size: 0.52rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.1em; margin-left: 0.3rem; }
+
+  /* ── FILTER WET + OSC BUDGET ─────────────────────── */
+  .harm-sliders-row { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+  .harm-slider-label-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.45rem; color: var(--dim); font-family: 'Orbitron', monospace; letter-spacing: 0.12em; margin-bottom: 0.25rem; margin-top: 0.45rem; }
+  .harm-slider-val { color: var(--glow); }
+
+  /* ── OUTPUT ROUTING ──────────────────────────────── */
+  .out-row { display: flex; align-items: center; justify-content: center; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); gap: 0.4rem; }
+  .out-label { font-size: 0.57rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.12em; }
+  .out-btn { background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: 'Orbitron', monospace; font-size: 0.57rem; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 2px; cursor: pointer; transition: all 0.15s; }
+  .out-btn.active-L { border-color: #00aaff; color: #00aaff; background: rgba(0,170,255,0.08); box-shadow: 0 0 6px rgba(0,170,255,0.2); }
+  .out-btn.active-R { border-color: #ff8833; color: #ff8833; background: rgba(255,136,51,0.08); box-shadow: 0 0 6px rgba(255,136,51,0.2); }
+  .out-btn.active-B { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.08); box-shadow: 0 0 6px rgba(0,212,255,0.2); }
+
+  /* ── FEEDBACK SECTION ────────────────────────────── */
+  .feedback-section { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+  .feedback-header { font-size: 0.54rem; font-family: 'Orbitron', monospace; color: var(--dim); letter-spacing: 0.2em; text-align: center; margin-bottom: 0.5rem; }
+  .feedback-mode-display {
+    text-align: center; font-family: 'Orbitron', monospace; font-size: 0.55rem;
+    letter-spacing: 0.2em; margin-bottom: 0.4rem; height: 1.2em;
+    transition: color 0.2s;
+  }
+  .feedback-mode-display.mode-off      { color: var(--dim); }
+  .feedback-mode-display.mode-echo     { color: #44ffaa; }
+  .feedback-mode-display.mode-sustain  { color: var(--glow); }
+  .feedback-mode-display.mode-chaos    { color: #ff4466; text-shadow: 0 0 8px #ff4466; }
+
+  .fb-toggle-row { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+  .fb-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--dim);
+    font-family: 'Orbitron', monospace; font-size: 0.51rem; letter-spacing: 0.08em;
+    padding: 3px 6px; border-radius: 2px; cursor: pointer; transition: all 0.15s;
+    flex: 1;
+  }
+  .fb-btn.active { border-color: var(--glow); color: var(--glow); background: rgba(0,212,255,0.08); }
+  .fb-btn.active-chaos { border-color: #ff4466; color: #ff4466; background: rgba(255,68,102,0.08); }
+
+  /* ── GEAR BUTTON ─────────────────────────────────── */
+  .hbtn-wrap { position: relative; width: 100%; display: flex; align-items: stretch; gap: 3px; }
+  .hbtn-gear { flex-shrink: 0; width: 18px; background: transparent; border: 1px solid #0e1e2e; border-radius: 3px; cursor: pointer; color: #1e3a52; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; transition: color 0.14s, border-color 0.14s; padding: 0; }
+  .hbtn-gear:hover { color: var(--dim); border-color: var(--dim); }
+  .hbtn-gear.active { color: var(--glow); border-color: var(--glow); }
+
+  /* ── HBTNS ───────────────────────────────────────── */
+  .hbtn { position: relative; width: 100%; padding: 4px 4px 3px; background: rgba(10,18,28,0.8); border: 1px solid #0e1e2e; border-radius: 3px; cursor: pointer; text-align: left; transition: border-color 0.14s, background 0.14s; overflow: hidden; flex-shrink: 0; }
+  .hbtn:hover { border-color: #1e3a55; }
+  .hbtn-name { display: block; font-family: 'Orbitron', monospace; font-size: 0.54rem; font-weight: 700; letter-spacing: 0.05em; color: #243850; transition: color 0.14s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbtn-sub { display: block; font-size: 0.44rem; color: #0e1e2e; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbtn-bar { position: absolute; bottom: 0; left: 0; height: 2px; width: 0%; background: var(--c, var(--glow)); transition: width 0.2s; box-shadow: 0 0 4px var(--c, var(--glow)); }
+  .hbtn.on { border-color: var(--c, var(--glow)); background: rgba(0,212,255,0.05); }
+  .hbtn.on .hbtn-name { color: var(--c, var(--glow)); text-shadow: 0 0 6px var(--c, var(--glow)); }
+  .hbtn.on .hbtn-sub  { color: rgba(0,212,255,0.3); }
+  .hbtn.on .hbtn-bar  { width: 100%; }
+
+  /* ── DRAWERS ─────────────────────────────────────── */
+  .drawer-tab { position: fixed; width: 20px; z-index: 400; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0; cursor: pointer; background: rgba(5,9,14,0.93); border: 1px solid var(--border); transition: background 0.15s, border-color 0.15s; }
+  .drawer-tab.left-top    { left: 0; top: 25%; transform: translateY(-50%); border-left: none; border-radius: 0 6px 6px 0; }
+  .drawer-tab.left-bot    { left: 0; top: 75%; transform: translateY(-50%); border-left: none; border-radius: 0 6px 6px 0; }
+  .drawer-tab.right-top   { right: 0; top: 25%; transform: translateY(-50%); border-right: none; border-radius: 6px 0 0 6px; }
+  .drawer-tab.right-bot   { right: 0; top: 75%; transform: translateY(-50%); border-right: none; border-radius: 6px 0 0 6px; }
+  .drawer-tab:hover { background: rgba(10,20,35,0.98); border-color: var(--dim); }
+  .drawer-tab.open  { border-color: var(--glow); }
+  .drawer-tab-label { writing-mode: vertical-rl; font-family: 'Orbitron', monospace; font-size: 0.44rem; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; user-select: none; transition: color 0.15s; white-space: nowrap; }
+  .drawer-tab.left-top .drawer-tab-label, .drawer-tab.left-bot .drawer-tab-label { transform: rotate(180deg); }
+  .drawer-tab.open .drawer-tab-label { color: var(--glow); }
+  .drawer-tab-dots { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .drawer-tab-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--dim); transition: background 0.2s, box-shadow 0.2s; }
+  .drawer-tab-dot.lit { background: var(--glow); box-shadow: 0 0 4px var(--glow); }
+  .drawer-panel { position: fixed; width: var(--drawer-w); z-index: 390; background: rgba(5,9,14,0.97); border: 1px solid var(--border); display: flex; flex-direction: column; padding: 8px 6px 10px; gap: 3px; box-shadow: 0 0 40px rgba(0,50,120,0.5), inset 0 0 20px rgba(0,0,0,0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; overflow-x: hidden; }
+  .drawer-panel.left-top  { left: 20px; top: 25%; transform: translateY(-50%) translateX(calc(-100% - 20px)); border-left: none; border-radius: 0 6px 6px 0; }
+  .drawer-panel.left-bot  { left: 20px; top: 75%; transform: translateY(-50%) translateX(calc(-100% - 20px)); border-left: none; border-radius: 0 6px 6px 0; }
+  .drawer-panel.right-top { right: 20px; top: 25%; transform: translateY(-50%) translateX(calc(100% + 20px)); border-right: none; border-radius: 6px 0 0 6px; }
+  .drawer-panel.right-bot { right: 20px; top: 75%; transform: translateY(-50%) translateX(calc(100% + 20px)); border-right: none; border-radius: 6px 0 0 6px; }
+  .drawer-panel.left-top.open, .drawer-panel.left-bot.open { transform: translateY(-50%) translateX(0); }
+  .drawer-panel.right-top.open, .drawer-panel.right-bot.open { transform: translateY(-50%) translateX(0); }
+  .drawer-header { font-family: 'Orbitron', monospace; font-size: 0.48rem; letter-spacing: 0.2em; color: var(--dim); text-align: center; margin-bottom: 2px; padding-bottom: 4px; border-bottom: 1px solid #0d1e2e; flex-shrink: 0; }
+  .drawer-status { margin-top: 3px; padding-top: 4px; border-top: 1px solid #0d1e2e; font-size: 0.47rem; font-family: 'Orbitron', monospace; color: #182840; text-align: center; letter-spacing: 0.08em; line-height: 1.8; flex-shrink: 0; }
+  .drawer-status .hl { color: var(--glow); }
+  .drawer-tab.left-top, .drawer-tab.left-bot, .drawer-panel.left-top, .drawer-panel.left-bot { --glow: #00d4ff; }
+  .drawer-tab.right-top.open, .drawer-tab.right-bot.open { border-color: #ff8833; }
+  .drawer-tab.right-top.open .drawer-tab-label, .drawer-tab.right-bot.open .drawer-tab-label { color: #ff8833; }
+  .drawer-panel.right-top .drawer-header, .drawer-panel.right-bot .drawer-header { color: #aa5522; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Frequency Generator — Pro</div>
+
+<!-- WAVEFORMS -->
+<div class="viz-collapse-toggle open" id="waveCollapseToggle"><div class="vc-bar"></div><div class="vc-label"><span class="vc-arrow">▼</span>WAVEFORMS</div><div class="vc-bar"></div></div>
+<div class="viz-collapse-content open" id="waveCollapseContent">
+  <div class="viz-section">
+    <div class="viz-row"><div class="visualiser-wrap full"><span class="viz-label">WAVEFORM — COMBINED</span><canvas id="viz" class="wave-main"></canvas></div></div>
+    <div class="viz-row"><div class="visualiser-wrap"><span class="viz-label">WAVEFORM — L</span><canvas id="vizL" class="wave-half"></canvas></div><div class="visualiser-wrap"><span class="viz-label right">WAVEFORM — R</span><canvas id="vizR" class="wave-half"></canvas></div></div>
+  </div>
+</div>
+
+<!-- SPECTROGRAMS -->
+<div class="viz-collapse-toggle open" id="fftCollapseToggle"><div class="vc-bar"></div><div class="vc-label"><span class="vc-arrow">▼</span>SPECTROGRAMS</div><div class="vc-bar"></div></div>
+<div class="viz-collapse-content open" id="fftCollapseContent">
+  <div class="viz-section">
+    <div class="viz-row"><div class="visualiser-wrap full"><span class="viz-label">SPECTRUM — COMBINED</span><canvas id="fft" class="fft-main"></canvas></div></div>
+    <div class="viz-row"><div class="visualiser-wrap"><span class="viz-label">SPECTRUM — L</span><canvas id="fftL" class="fft-half"></canvas></div><div class="visualiser-wrap"><span class="viz-label right">SPECTRUM — R</span><canvas id="fftR" class="fft-half"></canvas></div></div>
+  </div>
+</div>
+
+<!-- LISSAJOUS -->
+<div class="viz-collapse-toggle open" id="lissCollapseToggle"><div class="vc-bar"></div><div class="vc-label"><span class="vc-arrow">▼</span>LISSAJOUS</div><div class="vc-bar"></div></div>
+<div class="viz-collapse-content open" id="lissCollapseContent">
+  <div class="lissajous-section">
+    <div class="lissajous-wrap">
+      <span class="viz-label">L·R PHASE PORTRAIT</span>
+      <span class="liss-axis-x">RIGHT →</span>
+      <span class="liss-axis-y">LEFT ↑</span>
+      <button class="liss-autoscale-btn" id="lissAutoscaleBtn">AUTOSCALE</button>
+      <canvas id="lissCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- MASTER CONTROLS -->
+<div class="collapse-toggle open" id="masterCollapseToggle"><div class="ctog-bar"></div><div class="ctog-label"><span class="ctog-arrow">▼</span>MASTER CONTROLS</div><div class="ctog-bar"></div></div>
+<div class="collapse-content open" id="masterCollapseContent">
+<div class="master-row">
+  <!-- LEFT MASTER -->
+  <div class="master-panel" id="masterPanelL">
+    <div class="master-side-label">LEFT ENGINE</div>
+    <div class="freq-display"><div class="freq-value" id="mFreqTxtL">440.00</div></div>
+    <div class="slider-label-row"><span>1Hz</span><span class="slider-label-title">FREQUENCY</span><span>16kHz</span></div>
+    <div class="ctrl-row"><button class="ctrl-btn" id="mMinusL">-</button><div class="slider-wrap"><input type="range" id="mSliderL" min="0" max="1" step="0.0001"></div><button class="ctrl-btn" id="mPlusL">+</button></div>
+    <div class="slider-label-row"><span>0°</span><span class="slider-label-title">PHASE</span><span>360°</span></div>
+    <div class="ctrl-row"><button class="ctrl-btn" id="mPhaseMinusL">-</button><div class="slider-wrap"><input type="range" id="mPhaseSliderL" min="0" max="360" step="1" value="0"></div><button class="ctrl-btn" id="mPhasePlusL">+</button></div>
+    <div class="amp-row"><div class="amp-labels"><span class="slider-label-title" style="font-size:0.5rem;">AMPLITUDE</span><span class="amp-value-text" id="ampValueL">0 dB</span></div><div class="slider-wrap"><input type="range" id="ampSliderL" min="-100" max="20" step="1" value="0"></div></div>
+    <div class="status-bar"><div class="dot" id="statusDotL"></div><span id="statusTextL">STANDBY — TAP FREQ TO PLAY</span></div>
+    <div class="ind-avg-row"><span class="ind-avg-label">HARM TRACK</span><button class="ind-avg-btn active" id="indBtnL">IND</button><button class="ind-avg-btn" id="avgBtnL">AVG</button></div>
+    <div class="out-row"><span class="out-label">OUTPUT</span><button class="out-btn" id="outBtnBothL">BOTH</button><button class="out-btn active-L" id="outBtnLeftL">LEFT</button></div>
+    <div class="harm-sliders-row">
+      <div class="harm-slider-label-row"><span>FILTER WET</span><span class="harm-slider-val" id="filtWetValL">0.65</span></div>
+      <div class="slider-wrap"><input type="range" id="filtWetSliderL" min="0" max="2" step="0.01" value="0.65"></div>
+      <div class="harm-slider-label-row"><span>OSC BUDGET</span><span class="harm-slider-val" id="oscBudgetValL">0.50</span></div>
+      <div class="slider-wrap"><input type="range" id="oscBudgetSliderL" min="0" max="1" step="0.01" value="0.5"></div>
+    </div>
+    <!-- FEEDBACK LOOP L -->
+    <div class="feedback-section">
+      <div class="feedback-header">FEEDBACK LOOP · L</div>
+      <div class="feedback-mode-display mode-off" id="fbModeDisplayL">OFF</div>
+      <div class="harm-slider-label-row"><span>GAIN</span><span class="harm-slider-val" id="fbGainValL">0.00</span></div>
+      <div class="slider-wrap"><input type="range" id="fbGainSliderL" min="0" max="1.1" step="0.005" value="0"></div>
+      <div class="harm-slider-label-row"><span>DELAY</span><span class="harm-slider-val" id="fbDelayValL">50ms</span></div>
+      <div class="slider-wrap"><input type="range" id="fbDelaySliderL" min="0.005" max="0.3" step="0.001" value="0.05"></div>
+      <div class="harm-slider-label-row"><span>FILTER FREQ</span><span class="harm-slider-val" id="fbFreqValL">1.0kHz</span></div>
+      <div class="slider-wrap"><input type="range" id="fbFreqSliderL" min="100" max="10000" step="10" value="1000"></div>
+      <div class="fb-toggle-row">
+        <span class="input-label">TYPE</span>
+        <button class="fb-btn active" id="fbTypeNotchL">NOTCH</button>
+        <button class="fb-btn" id="fbTypeBpL">BANDPASS</button>
+      </div>
+      <div class="fb-toggle-row">
+        <span class="input-label">SOURCE</span>
+        <button class="fb-btn active" id="fbSrcIntL">INT</button>
+        <button class="fb-btn" id="fbSrcMicL">MIC</button>
+        <button class="fb-btn" id="fbSrcMixL">MIX</button>
+      </div>
+    </div>
+  </div>
+  <!-- RIGHT MASTER -->
+  <div class="master-panel" id="masterPanelR">
+    <div class="master-side-label" style="color:#aa5522;">RIGHT ENGINE</div>
+    <div class="freq-display"><div class="freq-value" id="mFreqTxtR" style="color:#ff8833;text-shadow:0 0 20px rgba(255,136,51,0.9),0 0 60px rgba(255,136,51,0.4);">440.00</div></div>
+    <div class="slider-label-row"><span>1Hz</span><span class="slider-label-title">FREQUENCY</span><span>16kHz</span></div>
+    <div class="ctrl-row"><button class="ctrl-btn" id="mMinusR">-</button><div class="slider-wrap"><input type="range" id="mSliderR" min="0" max="1" step="0.0001"></div><button class="ctrl-btn" id="mPlusR">+</button></div>
+    <div class="slider-label-row"><span>0°</span><span class="slider-label-title">PHASE</span><span>360°</span></div>
+    <div class="ctrl-row"><button class="ctrl-btn" id="mPhaseMinusR">-</button><div class="slider-wrap"><input type="range" id="mPhaseSliderR" min="0" max="360" step="1" value="0"></div><button class="ctrl-btn" id="mPhasePlusR">+</button></div>
+    <div class="amp-row"><div class="amp-labels"><span class="slider-label-title" style="font-size:0.5rem;">AMPLITUDE</span><span class="amp-value-text" id="ampValueR" style="color:#ff8833;">0 dB</span></div><div class="slider-wrap"><input type="range" id="ampSliderR" min="-100" max="20" step="1" value="0"></div></div>
+    <div class="status-bar"><div class="dot" id="statusDotR"></div><span id="statusTextR">STANDBY — TAP FREQ TO PLAY</span></div>
+    <div class="ind-avg-row"><span class="ind-avg-label">HARM TRACK</span><button class="ind-avg-btn active" id="indBtnR">IND</button><button class="ind-avg-btn" id="avgBtnR">AVG</button></div>
+    <div class="out-row"><span class="out-label">OUTPUT</span><button class="out-btn" id="outBtnBothR">BOTH</button><button class="out-btn active-R" id="outBtnRightR">RIGHT</button></div>
+    <div class="harm-sliders-row">
+      <div class="harm-slider-label-row"><span>FILTER WET</span><span class="harm-slider-val" id="filtWetValR">0.65</span></div>
+      <div class="slider-wrap"><input type="range" id="filtWetSliderR" min="0" max="2" step="0.01" value="0.65"></div>
+      <div class="harm-slider-label-row"><span>OSC BUDGET</span><span class="harm-slider-val" id="oscBudgetValR">0.50</span></div>
+      <div class="slider-wrap"><input type="range" id="oscBudgetSliderR" min="0" max="1" step="0.01" value="0.5"></div>
+    </div>
+    <!-- FEEDBACK LOOP R -->
+    <div class="feedback-section">
+      <div class="feedback-header">FEEDBACK LOOP · R</div>
+      <div class="feedback-mode-display mode-off" id="fbModeDisplayR">OFF</div>
+      <div class="harm-slider-label-row"><span>GAIN</span><span class="harm-slider-val" id="fbGainValR">0.00</span></div>
+      <div class="slider-wrap"><input type="range" id="fbGainSliderR" min="0" max="1.1" step="0.005" value="0"></div>
+      <div class="harm-slider-label-row"><span>DELAY</span><span class="harm-slider-val" id="fbDelayValR">50ms</span></div>
+      <div class="slider-wrap"><input type="range" id="fbDelaySliderR" min="0.005" max="0.3" step="0.001" value="0.05"></div>
+      <div class="harm-slider-label-row"><span>FILTER FREQ</span><span class="harm-slider-val" id="fbFreqValR">1.0kHz</span></div>
+      <div class="slider-wrap"><input type="range" id="fbFreqSliderR" min="100" max="10000" step="10" value="1000"></div>
+      <div class="fb-toggle-row">
+        <span class="input-label">TYPE</span>
+        <button class="fb-btn active" id="fbTypeNotchR">NOTCH</button>
+        <button class="fb-btn" id="fbTypeBpR">BANDPASS</button>
+      </div>
+      <div class="fb-toggle-row">
+        <span class="input-label">SOURCE</span>
+        <button class="fb-btn active" id="fbSrcIntR">INT</button>
+        <button class="fb-btn" id="fbSrcMicR">MIC</button>
+        <button class="fb-btn" id="fbSrcMixR">MIX</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- GLOBAL MIC BAR -->
+<div class="collapse-toggle open" id="micGlobalToggle"><div class="ctog-bar"></div><div class="ctog-label"><span class="ctog-arrow">▼</span>MIC INPUT — GLOBAL</div><div class="ctog-bar"></div></div>
+<div class="collapse-content open" id="micGlobalContent">
+  <div style="width:min(700px,94vw);background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:0.8rem 1rem;margin-bottom:0.8rem;display:flex;flex-direction:column;gap:0.6rem;">
+    <button class="enable-mic-btn" id="enableMicBtn" style="margin-bottom:0;">⬤ ENABLE MIC INPUT</button>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.44rem;font-family:'Orbitron',monospace;color:var(--dim);letter-spacing:0.1em;white-space:nowrap;">MOD BOOST</span>
+      <input type="range" id="micMasterBoostSl" min="1" max="100" step="1" value="20" style="flex:1;height:3px;">
+      <span id="micMasterBoostVal" style="font-size:0.44rem;font-family:'Orbitron',monospace;color:var(--glow);min-width:26px;text-align:right;cursor:pointer;border-bottom:1px dashed rgba(0,212,255,0.35);">20</span>
+    </div>
+    <div style="display:flex;gap:0.6rem;">
+      <!-- LEFT MIC PANEL -->
+      <div style="flex:1;border:1px solid rgba(0,170,255,0.25);border-radius:3px;padding:0.5rem 0.6rem;display:flex;flex-direction:column;gap:0.35rem;">
+        <div style="font-family:'Orbitron',monospace;font-size:0.44rem;letter-spacing:0.2em;color:#44bbff;margin-bottom:0.1rem;">LEFT</div>
+        <div style="display:flex;gap:0.25rem;">
+          <button class="input-btn active" id="inputIntL">INT</button>
+          <button class="input-btn" id="inputMicL">MIC</button>
+          <button class="input-btn" id="inputBothL">BOTH</button>
+        </div>
+        <div class="mic-controls" id="micControlsL">
+          <div class="harm-slider-label-row"><span><span class="mic-dot" id="micDotL"></span>INPUT GAIN</span><span class="harm-slider-val" id="micGainValL">1.00</span></div>
+          <div class="slider-wrap"><input type="range" id="micGainSliderL" min="0" max="10" step="0.05" value="1"></div>
+          <div class="harm-slider-label-row"><span>INPUT DELAY</span><span class="harm-slider-val" id="micDelayValL">0.00s</span></div>
+          <div class="slider-wrap"><input type="range" id="micDelaySliderL" min="0" max="2" step="0.01" value="0"></div>
+        </div>
+      </div>
+      <!-- RIGHT MIC PANEL -->
+      <div style="flex:1;border:1px solid rgba(255,136,51,0.25);border-radius:3px;padding:0.5rem 0.6rem;display:flex;flex-direction:column;gap:0.35rem;">
+        <div style="font-family:'Orbitron',monospace;font-size:0.44rem;letter-spacing:0.2em;color:#ff8833;margin-bottom:0.1rem;">RIGHT</div>
+        <div style="display:flex;gap:0.25rem;">
+          <button class="input-btn active" id="inputIntR">INT</button>
+          <button class="input-btn" id="inputMicR">MIC</button>
+          <button class="input-btn" id="inputBothR">BOTH</button>
+        </div>
+        <div class="mic-controls" id="micControlsR">
+          <div class="harm-slider-label-row"><span><span class="mic-dot" id="micDotR"></span>INPUT GAIN</span><span class="harm-slider-val" id="micGainValR">1.00</span></div>
+          <div class="slider-wrap"><input type="range" id="micGainSliderR" min="0" max="10" step="0.05" value="1"></div>
+          <div class="harm-slider-label-row"><span>INPUT DELAY</span><span class="harm-slider-val" id="micDelayValR">0.00s</span></div>
+          <div class="slider-wrap"><input type="range" id="micDelaySliderR" min="0" max="2" step="0.01" value="0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANK 1: SINE -->
+<div class="collapse-toggle open" id="sineBankToggle"><div class="ctog-bar"></div><div class="ctog-label"><span class="ctog-arrow">▼</span>WAVE BANK — SINE</div><div class="ctog-bar"></div></div>
+<div class="collapse-content open" id="sineBankContent"><div class="wave-grid" id="sineGrid"></div></div>
+
+<!-- BANK 2: SQUARE / PWM -->
+<div class="collapse-toggle open" id="sqBankToggle"><div class="ctog-bar"></div><div class="ctog-label"><span class="ctog-arrow">▼</span>WAVE BANK — SQUARE · PWM</div><div class="ctog-bar"></div></div>
+<div class="collapse-content open" id="sqBankContent"><div class="wave-grid" id="sqGrid"></div></div>
+
+<!-- BANK 3: RAMP -->
+<div class="collapse-toggle open" id="rampBankToggle"><div class="ctog-bar"></div><div class="ctog-label"><span class="ctog-arrow">▼</span>WAVE BANK — RAMP · SAW · TRI</div><div class="ctog-bar"></div></div>
+<div class="collapse-content open" id="rampBankContent"><div class="wave-grid" id="rampGrid"></div></div>
+
+<button class="kill-switch" id="killAll">GLOBAL KILL SWITCH</button>
+
+<!-- DRAWER TABS -->
+<div class="drawer-tab left-top"  id="tabOscL"><span class="drawer-tab-label">OSC HARM · L</span><div class="drawer-tab-dots" id="dotsOscL"></div></div>
+<div class="drawer-tab left-bot"  id="tabFiltL"><span class="drawer-tab-label">FILT HARM · L</span><div class="drawer-tab-dots" id="dotsFiltL"></div></div>
+<div class="drawer-tab right-top" id="tabOscR"><span class="drawer-tab-label">OSC HARM · R</span><div class="drawer-tab-dots" id="dotsOscR"></div></div>
+<div class="drawer-tab right-bot" id="tabFiltR"><span class="drawer-tab-label">FILT HARM · R</span><div class="drawer-tab-dots" id="dotsFiltR"></div></div>
+
+<!-- DRAWER PANELS -->
+<div class="drawer-panel left-top"  id="panelOscL"><div class="drawer-header">OSC · LEFT</div></div>
+<div class="drawer-panel left-bot"  id="panelFiltL"><div class="drawer-header">FILTER · LEFT</div></div>
+<div class="drawer-panel right-top" id="panelOscR"><div class="drawer-header">OSC · RIGHT</div></div>
+<div class="drawer-panel right-bot" id="panelFiltR"><div class="drawer-header">FILTER · RIGHT</div></div>
+
+<script>
+// ======================== HARMONIC SERIES ========================
+const SERIES = [
+  { id:'even',    name:'EVEN HARM',  sub:'2f·4f·6f·8f',       ratios:[2,4,6,8],              filterType:'peaking',  Q:8,  gain:18, color:'#ffcc00' },
+  { id:'odd',     name:'ODD HARM',   sub:'3f·5f·7f·9f',       ratios:[3,5,7,9],              filterType:'bandpass', Q:12, gain:0,  color:'#ff8800' },
+  { id:'sublin',  name:'SUB LINEAR', sub:'½·¼·⅙f',            ratios:[0.5,0.25,1/6],         filterType:'peaking',  Q:6,  gain:20, color:'#aa44ff' },
+  { id:'suboct',  name:'SUB OCTAVE', sub:'½·¼·⅛f',            ratios:[0.5,0.25,0.125],       filterType:'peaking',  Q:5,  gain:22, color:'#7722dd' },
+  { id:'octup',   name:'BRILLIANCE', sub:'2·4·8·16f',         ratios:[2,4,8,16],             filterType:'peaking',  Q:7,  gain:16, color:'#00ffcc' },
+  { id:'power',   name:'POWER 5TH',  sub:'3/2·5/2·7/2',       ratios:[1.5,2.5,3.5],          filterType:'both',     Q:14, gain:14, color:'#ff4466' },
+  { id:'just',    name:'JUST INTON', sub:'3/2·5/4·9/8',       ratios:[1.5,1.25,0.875,1.125], filterType:'both',     Q:16, gain:12, color:'#44aaff' },
+  { id:'perfect', name:'PERFECT',    sub:'4/3·3/2·5/3',       ratios:[4/3,1.5,5/3,2],        filterType:'bandpass', Q:20, gain:0,  color:'#00ff88' },
+  { id:'blue',    name:'BLUE NOTE',  sub:'7/3·7/5·11/7',      ratios:[7/3,7/5,11/7,13/8],    filterType:'bandpass', Q:18, gain:0,  color:'#8866ff' }
+];
+
+// ======================== UTILS ========================
+const LOG_MAX = Math.log10(16000);
+const fToP = f => Math.log10(f) / LOG_MAX;
+const pToF = p => Math.pow(10, p * LOG_MAX);
+const dbToLinear = db => Math.pow(10, db/20) * 0.25;
+const clampFreq = f => Math.min(Math.max(f, 20), 20000);
+function updateSliderFill(el) {
+  const pct = ((el.value - el.min) / (el.max - el.min)) * 100;
+  el.style.setProperty('--pct', pct + '%');
+}
+const wavePaths = {
+  sine:     'M0,10 C5.5,10 5.5,1 11,1 C16.5,1 16.5,19 23,19 C29.5,19 29.5,1 35,1 C40.5,1 40.5,10 46,10',
+  square:   'M0,10 L0,2 L11.5,2 L11.5,18 L23,18 L23,2 L34.5,2 L34.5,18 L46,18 L46,10',
+  sawtooth: 'M0,18 L11.5,2 L11.5,18 L23,2 L23,18 L34.5,2 L34.5,18 L46,2',
+  triangle: 'M0,10 L5.75,2 L17.25,18 L28.75,2 L40.25,18 L46,10',
+  pulse:    'M0,10 L0,2 L5,2 L5,18 L23,18 L23,2 L28,2 L28,18 L46,18 L46,10',
+  ramp:     'M0,18 L11.5,2 L11.5,18 L23,2 L23,18 L34.5,2 L34.5,18 L46,2'
+};
+
+// ======================== AUDIO STATE ========================
+let actx = null, masterGainL = null, masterGainR = null, analyser = null;
+let analyserL = null, analyserR = null, filterMasterGainL = null, filterMasterGainR = null;
+let oscBusGainL = null, oscBusGainR = null;
+let micBusGainL = null, micBusGainR = null;
+let micDelayL   = null, micDelayR   = null;
+let micSource   = null;
+let micGainNode = null;  // shared mic source tap (MediaRecorder and getUserMedia both connect here)
+let micGranted  = false;
+let pannerL = null, pannerR = null;
+let outMixLLeft = null, outMixLRight = null, outMixRLeft = null, outMixRRight = null;
+let outMergerL = null, outMergerR = null;
+
+// Feedback loop nodes per side
+const fbNodes = {
+  L: { delay: null, filter: null, gain: null, intFeedGain: null, micLoopGain: null },
+  R: { delay: null, filter: null, gain: null, intFeedGain: null, micLoopGain: null }
+};
+const fbState = {
+  L: { gain: 0, delay: 0.05, freq: 1000, type: 'notch', loopSrc: 'INT' },
+  R: { gain: 0, delay: 0.05, freq: 1000, type: 'notch', loopSrc: 'INT' }
+};
+
+let micMasterBoost = 20;
+
+let playingL = false, playingR = false;
+const harmMode   = { L: 'IND', R: 'IND' };
+const inputMode  = { L: 'INT', R: 'INT' };
+const outMode    = { L: 'LEFT', R: 'RIGHT' };  // each engine defaults to its own ear
+const oscBudget  = { L: 0.5, R: 0.5 };
+const seriesSettings = { L: { osc: {}, filt: {} }, R: { osc: {}, filt: {} } };
+function getSeriesSettings(side, engine, id) {
+  if (!seriesSettings[side][engine][id]) seriesSettings[side][engine][id] = { amp: 1, c: 1 };
+  return seriesSettings[side][engine][id];
+}
+
+const unitsL = [], unitsR = [];
+const oscLayers  = { L: {}, R: {} };
+const oscActive  = { L: new Set(), R: new Set() };
+const filtLayers = { L: {}, R: {} };
+let lissAutoScale = false;
+
+// ======================== AUDIO INIT ========================
+function initAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGainL = actx.createGain(); masterGainR = actx.createGain();
+  masterGainL.gain.setValueAtTime(dbToLinear(0), actx.currentTime);
+  masterGainR.gain.setValueAtTime(dbToLinear(0), actx.currentTime);
+  analyser = actx.createAnalyser(); analyser.fftSize = 2048;
+  analyserL = actx.createAnalyser(); analyserL.fftSize = 2048;
+  analyserR = actx.createAnalyser(); analyserR.fftSize = 2048;
+  filterMasterGainL = actx.createGain(); filterMasterGainR = actx.createGain();
+  filterMasterGainL.gain.setValueAtTime(dbToLinear(0), actx.currentTime);
+  filterMasterGainR.gain.setValueAtTime(dbToLinear(0), actx.currentTime);
+
+  // Oscillator buses
+  oscBusGainL = actx.createGain(); oscBusGainR = actx.createGain();
+  oscBusGainL.gain.setValueAtTime(1, actx.currentTime);
+  oscBusGainR.gain.setValueAtTime(1, actx.currentTime);
+  oscBusGainL.connect(masterGainL); oscBusGainR.connect(masterGainR);
+
+  // Mic bus — mirrors oscillator bus exactly.
+  // micSource → micBusGainL → masterGainL  (INPUT mode gates micBusGainL)
+  // micSource → micBusGainR → masterGainR  (INPUT mode gates micBusGainR)
+  // INPUT GAIN slider multiplies micBusGainL/R directly (when active).
+  // INPUT DELAY nodes are in series when delay > 0, bypassed at 0.
+  micGainNode = actx.createGain(); micGainNode.gain.setValueAtTime(1, actx.currentTime); // shared source tap for MediaRecorder
+  micDelayL = actx.createDelay(2.0); micDelayR = actx.createDelay(2.0);
+  micDelayL.delayTime.setValueAtTime(0, actx.currentTime);
+  micDelayR.delayTime.setValueAtTime(0, actx.currentTime);
+  micBusGainL = actx.createGain(); micBusGainR = actx.createGain();
+  micBusGainL.gain.setValueAtTime(0, actx.currentTime);
+  micBusGainR.gain.setValueAtTime(0, actx.currentTime);
+  // Direct path: micGainNode → micDelay → micBusGain → masterGain
+  micGainNode.connect(micDelayL);  micGainNode.connect(micDelayR);
+  micDelayL.connect(micBusGainL);  micDelayR.connect(micBusGainR);
+  micBusGainL.connect(masterGainL); micBusGainR.connect(masterGainR);
+
+  // Explicit stereo output matrices per engine. This avoids pan-law quirks and keeps
+  // LEFT / BOTH / RIGHT behavior deterministic.
+  outMergerL = actx.createChannelMerger(2);
+  outMergerR = actx.createChannelMerger(2);
+  outMixLLeft  = actx.createGain();
+  outMixLRight = actx.createGain();
+  outMixRLeft  = actx.createGain();
+  outMixRRight = actx.createGain();
+  [outMixLLeft, outMixLRight, outMixRLeft, outMixRRight].forEach(g => g.gain.setValueAtTime(0, actx.currentTime));
+
+  // Routing
+  // Main signal path: engine buses → per-engine stereo matrix → destination
+  masterGainL.connect(outMixLLeft);  masterGainL.connect(outMixLRight);
+  filterMasterGainL.connect(outMixLLeft);  filterMasterGainL.connect(outMixLRight);
+  masterGainR.connect(outMixRLeft);  masterGainR.connect(outMixRRight);
+  filterMasterGainR.connect(outMixRLeft);  filterMasterGainR.connect(outMixRRight);
+  outMixLLeft.connect(outMergerL, 0, 0);
+  outMixLRight.connect(outMergerL, 0, 1);
+  outMixRLeft.connect(outMergerR, 0, 0);
+  outMixRRight.connect(outMergerR, 0, 1);
+  outMergerL.connect(actx.destination);
+  outMergerR.connect(actx.destination);
+
+  // Visualization taps: one per engine, straight from the master buses
+  masterGainL.connect(analyserL);
+  filterMasterGainL.connect(analyserL);
+  masterGainR.connect(analyserR);
+  filterMasterGainR.connect(analyserR);
+  analyserL.connect(analyser); analyserR.connect(analyser);
+
+  applyOutputRouting('L');
+  applyOutputRouting('R');
+
+  // Build feedback loops (pre-wired, gain starts at 0)
+  ['L','R'].forEach(side => buildFeedbackLoop(side));
+}
+
+// ======================== FEEDBACK LOOP ========================
+function buildFeedbackLoop(side) {
+  if (!actx) return;
+  const masterGain = side === 'L' ? masterGainL : masterGainR;
+  const fb = fbNodes[side];
+  const st = fbState[side];
+
+  fb.delay       = actx.createDelay(2.0);
+  fb.filter      = actx.createBiquadFilter();
+  fb.gain        = actx.createGain();
+  fb.intFeedGain = actx.createGain();  // gates INT signal into delay
+  fb.micLoopGain = actx.createGain();  // gates MIC signal into delay
+
+  fb.delay.delayTime.setValueAtTime(st.delay, actx.currentTime);
+  fb.filter.type = st.type;
+  fb.filter.frequency.setValueAtTime(st.freq, actx.currentTime);
+  fb.filter.Q.setValueAtTime(8, actx.currentTime);
+  if (st.type === 'peaking') fb.filter.gain.setValueAtTime(-20, actx.currentTime);
+  fb.gain.gain.setValueAtTime(0, actx.currentTime);         // starts silent
+  fb.intFeedGain.gain.setValueAtTime(1, actx.currentTime);  // INT mode default
+  fb.micLoopGain.gain.setValueAtTime(0, actx.currentTime);  // off by default
+
+  // Signal path: masterGain → intFeedGain → delay → filter → fbGain → masterGain
+  masterGain.connect(fb.intFeedGain);
+  fb.intFeedGain.connect(fb.delay);
+  fb.delay.connect(fb.filter);
+  fb.filter.connect(fb.gain);
+  fb.gain.connect(masterGain);
+
+  // MIC path: micGainNode → micLoopGain → delay
+  micGainNode.connect(fb.micLoopGain);
+  fb.micLoopGain.connect(fb.delay);
+}
+
+function applyFbLoopSrc(side, src) {
+  const fb = fbNodes[side];
+  if (!fb.intFeedGain) return;
+  fbState[side].loopSrc = src;
+  const intG = (src === 'INT' || src === 'MIX') ? 1 : 0;
+  const micG = (src === 'MIC' || src === 'MIX') ? 1 : 0;
+  fb.intFeedGain.gain.setTargetAtTime(intG, actx.currentTime, 0.05);
+  fb.micLoopGain.gain.setTargetAtTime(micG, actx.currentTime, 0.05);
+}
+
+function applyFeedbackGain(side, val) {
+  if (!fbNodes[side].gain) return;
+  fbNodes[side].gain.gain.setTargetAtTime(val, actx.currentTime, 0.05);
+  fbState[side].gain = val;
+  updateFbModeDisplay(side, val);
+}
+
+function updateFbModeDisplay(side, gain) {
+  const el = document.getElementById(`fbModeDisplay${side}`);
+  let mode, cls;
+  if      (gain < 0.05)  { mode = 'OFF';     cls = 'mode-off'; }
+  else if (gain < 0.85)  { mode = 'ECHO';    cls = 'mode-echo'; }
+  else if (gain < 1.02)  { mode = 'SUSTAIN'; cls = 'mode-sustain'; }
+  else                   { mode = 'CHAOS';   cls = 'mode-chaos'; }
+  el.textContent = mode;
+  el.className = 'feedback-mode-display ' + cls;
+}
+
+// Snap zones: 0=OFF, 0.70=ECHO, 0.98=SUSTAIN, 1.05=CHAOS
+function snapFbGain(raw) {
+  const snaps = [0, 0.70, 0.98, 1.05];
+  const thresh = 0.04;
+  for (const s of snaps) {
+    if (Math.abs(raw - s) < thresh) return s;
+  }
+  return raw;
+}
+
+function setupFeedbackControls(side) {
+  const gainSl  = document.getElementById(`fbGainSlider${side}`);
+  const gainVal = document.getElementById(`fbGainVal${side}`);
+  const delaySl = document.getElementById(`fbDelaySlider${side}`);
+  const delayVal= document.getElementById(`fbDelayVal${side}`);
+  const freqSl  = document.getElementById(`fbFreqSlider${side}`);
+  const freqVal = document.getElementById(`fbFreqVal${side}`);
+  const notchBtn= document.getElementById(`fbTypeNotch${side}`);
+  const bpBtn   = document.getElementById(`fbTypeBp${side}`);
+  const srcIntBtn = document.getElementById(`fbSrcInt${side}`);
+  const srcMicBtn = document.getElementById(`fbSrcMic${side}`);
+  const srcMixBtn = document.getElementById(`fbSrcMix${side}`);
+
+  updateSliderFill(gainSl); updateSliderFill(delaySl); updateSliderFill(freqSl);
+
+  gainSl.addEventListener('input', e => {
+    const raw = parseFloat(e.target.value);
+    const snapped = snapFbGain(raw);
+    gainSl.value = snapped;
+    gainVal.textContent = snapped.toFixed(2);
+    updateSliderFill(gainSl);
+    if (actx) applyFeedbackGain(side, snapped);
+  });
+
+  delaySl.addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    const ms = Math.round(v * 1000);
+    delayVal.textContent = ms + 'ms';
+    updateSliderFill(e.target);
+    fbState[side].delay = v;
+    if (fbNodes[side].delay) fbNodes[side].delay.delayTime.setTargetAtTime(v, actx.currentTime, 0.01);
+  });
+
+  freqSl.addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    freqVal.textContent = v >= 1000 ? (v/1000).toFixed(1)+'kHz' : Math.round(v)+'Hz';
+    updateSliderFill(e.target);
+    fbState[side].freq = v;
+    if (fbNodes[side].filter) fbNodes[side].filter.frequency.setTargetAtTime(v, actx.currentTime, 0.01);
+  });
+
+  function setFilterType(type) {
+    fbState[side].type = type;
+    notchBtn.classList.toggle('active', type === 'notch');
+    bpBtn.classList.toggle('active', type === 'bandpass');
+    if (fbNodes[side].filter) fbNodes[side].filter.type = type;
+  }
+  notchBtn.addEventListener('click', () => setFilterType('notch'));
+  bpBtn.addEventListener('click',    () => setFilterType('bandpass'));
+
+  function setLoopSrc(src) {
+    srcIntBtn.classList.toggle('active', src === 'INT');
+    srcMicBtn.classList.toggle('active', src === 'MIC');
+    srcMixBtn.classList.toggle('active', src === 'MIX');
+    if (actx) applyFbLoopSrc(side, src);
+  }
+  srcIntBtn.addEventListener('click', () => setLoopSrc('INT'));
+  srcMicBtn.addEventListener('click', () => setLoopSrc('MIC'));
+  srcMixBtn.addEventListener('click', () => setLoopSrc('MIX'));
+}
+
+// ======================== OSC HARMONIC ENGINE ========================
+function stopOscLayers(side) {
+  for (const nodes of Object.values(oscLayers[side])) {
+    nodes.forEach(({ osc, g }) => { try { osc.stop(); } catch(e){} try { g.disconnect(); } catch(e){} });
+  }
+  oscLayers[side] = {};
+}
+function spawnHarmOsc(freq, waveType, gainVal, startTime, masterGain, periodicWave) {
+  const osc = actx.createOscillator(), g = actx.createGain();
+  if (periodicWave) {
+    osc.setPeriodicWave(periodicWave);
+  } else {
+    osc.type = waveType;
+  }
+  osc.frequency.setValueAtTime(freq, startTime);
+  g.gain.setValueAtTime(gainVal, startTime);
+  osc.connect(g); g.connect(masterGain); osc.start(startTime);
+  return { osc, g };
+}
+function startOscLayers(side, startTime) {
+  if (!actx || (side==='L'?!playingL:!playingR)) return;
+  const units = side==='L'?unitsL:unitsR, activeUnits = units.filter(u=>u.on);
+  if (activeUnits.length===0) return;
+  const masterGain = side==='L'?masterGainL:masterGainR;
+  const n = oscActive[side].size;
+  const totalBudget = oscBudget[side];
+  const seriesBudget = n>0 ? totalBudget/n : totalBudget;
+  if (harmMode[side] === 'IND') {
+    const budgetPerUnit = seriesBudget / activeUnits.length;
+    for (const id of oscActive[side]) {
+      const series = SERIES.find(s=>s.id===id); if(!series) continue;
+      const {amp, c} = getSeriesSettings(side,'osc',id);
+      const recipSum = series.ratios.reduce((a,_,i)=>a + 1/(i+c),0);
+      const nodes = [];
+      activeUnits.forEach(unit => {
+        series.ratios.forEach((ratio,i) => {
+          const freq = clampFreq(unit.f * ratio);
+          const g = amp * (budgetPerUnit / recipSum) * (1/(i+c));
+          nodes.push(spawnHarmOsc(freq, unit.type, g, startTime, masterGain, unit.periodicWave));
+        });
+      });
+      oscLayers[side][id] = nodes;
+    }
+  } else {
+    const avgFreq = getAvgFreq(side);
+    const activeWaves = [...new Set(activeUnits.map(u=>u.type))];
+    for (const id of oscActive[side]) {
+      const series = SERIES.find(s=>s.id===id); if(!series) continue;
+      const {amp, c} = getSeriesSettings(side,'osc',id);
+      const recipSum = series.ratios.reduce((a,_,i)=>a + 1/(i+c),0);
+      const nodes = [];
+      series.ratios.forEach((ratio,i) => {
+        const freq = clampFreq(avgFreq * ratio);
+        const ratioGain = amp * (seriesBudget / recipSum) * (1/(i+c));
+        const gainPerWave = ratioGain / activeWaves.length;
+        activeWaves.forEach(waveType => {
+          nodes.push(spawnHarmOsc(freq, waveType, gainPerWave, startTime, masterGain));
+        });
+      });
+      oscLayers[side][id] = nodes;
+    }
+  }
+}
+
+// ======================== FILTER HARMONIC ENGINE ========================
+function buildFilterChain(series, sourceNode, freq, destination, ratioIndex, side, seriesId) {
+  const filters = [];
+  let lastNode = null;
+  if (series.filterType === 'bandpass') {
+    const bp = actx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.setValueAtTime(freq, actx.currentTime);
+    bp.Q.setValueAtTime(series.Q, actx.currentTime);
+    sourceNode.connect(bp); lastNode = bp;
+    filters.push({ bp, entryNode: bp, sourceNode });
+  } else if (series.filterType === 'peaking') {
+    const pk = actx.createBiquadFilter(); pk.type='peaking';
+    pk.frequency.setValueAtTime(freq, actx.currentTime);
+    pk.Q.setValueAtTime(series.Q, actx.currentTime);
+    pk.gain.setValueAtTime(series.gain, actx.currentTime);
+    sourceNode.connect(pk); lastNode = pk;
+    filters.push({ pk, entryNode: pk, sourceNode });
+  } else {
+    const bp = actx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.setValueAtTime(freq, actx.currentTime); bp.Q.setValueAtTime(series.Q, actx.currentTime);
+    const pk = actx.createBiquadFilter(); pk.type='peaking';
+    pk.frequency.setValueAtTime(freq, actx.currentTime); pk.Q.setValueAtTime(series.Q*0.5, actx.currentTime);
+    pk.gain.setValueAtTime(series.gain, actx.currentTime);
+    sourceNode.connect(bp); bp.connect(pk); lastNode = pk;
+    filters.push({ bp, pk, entryNode: bp, sourceNode });
+  }
+  const settings = getSeriesSettings(side, 'filt', seriesId);
+  const scaleGain = actx.createGain();
+  scaleGain.gain.setValueAtTime(settings.amp * (1 / (ratioIndex + settings.c)), actx.currentTime);
+  lastNode.connect(scaleGain); scaleGain.connect(destination);
+  filters.push({ scaleGain });
+  return filters;
+}
+function buildFilterLayer(side, series) {
+  if (filtLayers[side][series.id] || !actx) return;
+  const masterGain = side === 'L' ? masterGainL : masterGainR;
+  const units = side === 'L' ? unitsL : unitsR;
+  const activeUnits = units.filter(u => u.on);
+  const wetSlider = document.getElementById(`filtWetSlider${side}`);
+  const wetValue = wetSlider ? parseFloat(wetSlider.value) : 0.65;
+  const activeFiltCount = Math.max(1, Object.keys(filtLayers[side]).length + 1);
+  const wetGain = actx.createGain();
+  wetGain.gain.setValueAtTime(wetValue / activeFiltCount, actx.currentTime);
+  const filterMasterGain = side === 'L' ? filterMasterGainL : filterMasterGainR;
+  wetGain.connect(filterMasterGain);
+  const summer = actx.createGain(); summer.gain.setValueAtTime(1, actx.currentTime); summer.connect(wetGain);
+  const filters = [];
+  if (harmMode[side] === 'IND' && activeUnits.length > 0) {
+    activeUnits.forEach(unit => {
+      series.ratios.forEach((ratio, idx) => {
+        const chain = buildFilterChain(series, unit.g, clampFreq(unit.f * ratio), summer, idx, side, series.id);
+        chain.forEach(f => { f.ratio = ratio; f.unitRef = unit; }); filters.push(...chain);
+      });
+    });
+  } else {
+    const avgFreq = getAvgFreq(side);
+    series.ratios.forEach((ratio, idx) => {
+      const chain = buildFilterChain(series, masterGain, clampFreq(avgFreq * ratio), summer, idx, side, series.id);
+      chain.forEach(f => { f.ratio = ratio; f.unitRef = null; }); filters.push(...chain);
+    });
+  }
+  filtLayers[side][series.id] = { filters, wetGain, summer, mode: harmMode[side] };
+  updateFiltStatus(side);
+}
+function teardownFilterLayer(side, series) {
+  const layer = filtLayers[side][series.id]; if (!layer) return;
+  try {
+    layer.filters.forEach(f => {
+      try { if (f.sourceNode && f.entryNode) f.sourceNode.disconnect(f.entryNode); } catch(e) {}
+      try { if (f.scaleGain) f.scaleGain.disconnect(); } catch(e) {}
+    });
+    layer.summer.disconnect(); layer.wetGain.disconnect();
+  } catch(e) {}
+  delete filtLayers[side][series.id]; updateFiltStatus(side);
+}
+function updateFilterFreqs(side, masterFreq) {
+  for (const [id, layer] of Object.entries(filtLayers[side])) {
+    if (layer.mode === 'IND') continue;
+    const series = SERIES.find(s => s.id === id); if (!series) continue;
+    layer.filters.forEach(f => {
+      if (f.bp && f.ratio) f.bp.frequency.setTargetAtTime(clampFreq(masterFreq * f.ratio), actx.currentTime, 0.01);
+      if (f.pk && f.ratio) f.pk.frequency.setTargetAtTime(clampFreq(masterFreq * f.ratio), actx.currentTime, 0.01);
+    });
+  }
+}
+
+// ======================== STATUS ========================
+function updateTabDots(dotsId, count) {
+  const el = document.getElementById(dotsId); el.innerHTML = '';
+  for (let i=0; i<Math.min(count,5); i++) { const d=document.createElement('div'); d.className='drawer-tab-dot lit'; el.appendChild(d); }
+}
+function updateOscStatus(side) {
+  const el = document.getElementById(side==='L'?'statusOscL':'statusOscR');
+  const count = oscActive[side].size;
+  const totalOscs = Object.values(oscLayers[side]).reduce((s,n)=>s+n.length,0);
+  el.innerHTML = count===0 ? 'DRY ONLY' : `<span class="hl">${count}</span> SERIES · ${harmMode[side]}<br><span class="hl">${totalOscs}</span> OSCS`;
+  updateTabDots(side==='L'?'dotsOscL':'dotsOscR', count);
+}
+function updateFiltStatus(side) {
+  const el = document.getElementById(side==='L'?'statusFiltL':'statusFiltR');
+  const ids = Object.keys(filtLayers[side]);
+  const totalF = Object.values(filtLayers[side]).reduce((s,l)=>s+l.filters.length,0);
+  el.innerHTML = ids.length===0 ? 'DRY ONLY' : `<span class="hl">${ids.length}</span> LAYERS · ${harmMode[side]}<br><span class="hl">${totalF}</span> FILTERS`;
+  updateTabDots(side==='L'?'dotsFiltL':'dotsFiltR', ids.length);
+}
+
+// ======================== DRAWER PANELS ========================
+let openSettingsPanel = null;
+document.addEventListener('click', e => {
+  if (openSettingsPanel && !openSettingsPanel.contains(e.target) && !e.target.classList.contains('hbtn-gear')) {
+    openSettingsPanel.remove();
+    const gear = openSettingsPanel._gear;
+    if (gear) gear.classList.remove('active');
+    openSettingsPanel = null;
+  }
+});
+function buildPanel(panelId, statusId, side, isOsc) {
+  const panel = document.getElementById(panelId);
+  const engine = isOsc ? 'osc' : 'filt';
+  SERIES.forEach(s => {
+    const wrap = document.createElement('div'); wrap.className = 'hbtn-wrap';
+    const btn = document.createElement('button'); btn.className = 'hbtn'; btn.dataset.id = s.id;
+    btn.style.setProperty('--c', s.color); btn.style.flex = '1';
+    btn.innerHTML = `<span class="hbtn-name">${s.name}</span><span class="hbtn-sub">${s.sub}</span><span class="hbtn-bar"></span>`;
+    const gear = document.createElement('button'); gear.className = 'hbtn-gear'; gear.innerHTML = '⚙';
+    gear.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (openSettingsPanel && openSettingsPanel._gear === gear) {
+        openSettingsPanel.remove(); gear.classList.remove('active'); openSettingsPanel = null; return;
+      }
+      if (openSettingsPanel) { openSettingsPanel.remove(); const og=openSettingsPanel._gear; if(og) og.classList.remove('active'); openSettingsPanel = null; }
+      const cfg = getSeriesSettings(side, engine, s.id);
+      const floatDiv = document.createElement('div'); floatDiv.className = 'floating-settings';
+      floatDiv.innerHTML = `<div class="hbtn-settings-title">${s.name}</div><div class="hbtn-settings-row"><span>AMP</span><span class="sv" id="amp-val-${side}-${engine}-${s.id}">${cfg.amp.toFixed(2)}</span></div><input type="range" id="amp-sl-${side}-${engine}-${s.id}" min="0" max="2" step="0.01" value="${cfg.amp}"><div class="hbtn-settings-row"><span>FALLOFF c</span><span class="sv" id="c-val-${side}-${engine}-${s.id}">${cfg.c.toFixed(2)}</span></div><input type="range" id="c-sl-${side}-${engine}-${s.id}" min="0.25" max="8" step="0.25" value="${cfg.c}">`;
+      Object.assign(floatDiv.style, { position:'fixed', backgroundColor:'rgba(5,9,14,0.98)', border:'1px solid var(--glow)', borderRadius:'4px', padding:'8px', width:'130px', zIndex:'1000', boxShadow:'0 0 20px rgba(0,50,120,0.8)', backdropFilter:'blur(12px)', fontFamily:'Share Tech Mono, monospace' });
+      const rect = gear.getBoundingClientRect();
+      floatDiv.style.top = rect.top + 'px';
+      if (panel.classList.contains('left-top') || panel.classList.contains('left-bot')) floatDiv.style.left = (rect.right + 8) + 'px';
+      else floatDiv.style.left = (rect.left - 138) + 'px';
+      floatDiv._gear = gear;
+      const ampSl = floatDiv.querySelector(`#amp-sl-${side}-${engine}-${s.id}`);
+      const cSl = floatDiv.querySelector(`#c-sl-${side}-${engine}-${s.id}`);
+      const ampVal = floatDiv.querySelector(`#amp-val-${side}-${engine}-${s.id}`);
+      const cVal = floatDiv.querySelector(`#c-val-${side}-${engine}-${s.id}`);
+      ampSl.addEventListener('input', ev => { const v=parseFloat(ev.target.value); getSeriesSettings(side,engine,s.id).amp=v; ampVal.textContent=v.toFixed(2); doRestart(); });
+      cSl.addEventListener('input', ev => { const v=parseFloat(ev.target.value); getSeriesSettings(side,engine,s.id).c=v; cVal.textContent=v.toFixed(2); doRestart(); });
+      document.body.appendChild(floatDiv); gear.classList.add('active'); openSettingsPanel = floatDiv;
+    });
+    btn.addEventListener('click', () => {
+      const isOn = btn.classList.toggle('on');
+      if (isOsc) { if (isOn) oscActive[side].add(s.id); else oscActive[side].delete(s.id); }
+      doRestart();
+      if(!playingL && !playingR) { updateOscStatus(side); updateFiltStatus(side); }
+    });
+    wrap.appendChild(btn); wrap.appendChild(gear); panel.appendChild(wrap);
+  });
+  const statusEl = document.createElement('div'); statusEl.className = 'drawer-status'; statusEl.id = statusId; statusEl.textContent = 'DRY ONLY';
+  panel.appendChild(statusEl);
+}
+function doRestart() {
+  if (!actx) return;
+  if(playingL) stopEngine('L'); if(playingR) stopEngine('R');
+  const t = actx.currentTime + 0.05;
+  if(playingL) startEngine('L', t); if(playingR) startEngine('R', t);
+  refreshMicModulations();
+}
+function setupHarmSliders(side) {
+  const filtWetSlider = document.getElementById(`filtWetSlider${side}`);
+  const filtWetVal    = document.getElementById(`filtWetVal${side}`);
+  const oscBudgetSlider = document.getElementById(`oscBudgetSlider${side}`);
+  const oscBudgetVal  = document.getElementById(`oscBudgetVal${side}`);
+  updateSliderFill(filtWetSlider); updateSliderFill(oscBudgetSlider);
+  filtWetSlider.addEventListener('input', e => {
+    const v = parseFloat(e.target.value); filtWetVal.textContent = v.toFixed(2); updateSliderFill(e.target);
+    for (const layer of Object.values(filtLayers[side])) if (layer.wetGain) layer.wetGain.gain.setTargetAtTime(v, actx.currentTime, 0.02);
+  });
+  oscBudgetSlider.addEventListener('input', e => {
+    const v = parseFloat(e.target.value); oscBudgetVal.textContent = v.toFixed(2); updateSliderFill(e.target);
+    oscBudget[side] = v; doRestart();
+  });
+}
+buildPanel('panelOscL', 'statusOscL', 'L', true);
+buildPanel('panelFiltL', 'statusFiltL', 'L', false);
+buildPanel('panelOscR', 'statusOscR', 'R', true);
+buildPanel('panelFiltR', 'statusFiltR', 'R', false);
+setupHarmSliders('L'); setupHarmSliders('R');
+
+// ======================== MIC + INPUT MODE ========================
+function applyInputMode(side) {
+  if (!actx) return;
+  const mode = inputMode[side];
+  const oscBus = side==='L' ? oscBusGainL : oscBusGainR;
+  const micBus = side==='L' ? micBusGainL : micBusGainR;
+  oscBus.gain.setTargetAtTime((mode==='INT'||mode==='BOTH') ? 1 : 0, actx.currentTime, 0.02);
+  // Use current INPUT GAIN slider value when opening mic bus, not a fixed 1
+  const gainSlider = document.getElementById('micGainSlider' + side);
+  const gainVal = gainSlider ? parseFloat(gainSlider.value) : 1;
+  micBus.gain.setTargetAtTime((mode==='MIC'||mode==='BOTH') ? gainVal : 0, actx.currentTime, 0.02);
+  const ctrl = document.getElementById(`micControls${side}`);
+  if (ctrl) ctrl.classList.toggle('visible', mode!=='INT');
+  const dot = document.getElementById(`micDot${side}`);
+  if (dot) dot.classList.toggle('active', micGranted && mode!=='INT');
+  // If switching to mic mode, ensure AudioContext is running and draw loop is active.
+  // Without this, mic-only mode (no engine playing) produces silence and no visualizers.
+  if ((mode==='MIC'||mode==='BOTH') && micGranted) {
+    if (actx.state === 'suspended') actx.resume();
+    if (!playingL && !playingR) drawLoop();
+  }
+}
+function setupInputMode(side) {
+  const intBtn  = document.getElementById(`inputInt${side}`);
+  const micBtn  = document.getElementById(`inputMic${side}`);
+  const bothBtn = document.getElementById(`inputBoth${side}`);
+  const gainSl  = document.getElementById(`micGainSlider${side}`);
+  const gainVal = document.getElementById(`micGainVal${side}`);
+  const delaySl = document.getElementById(`micDelaySlider${side}`);
+  const delayVal= document.getElementById(`micDelayVal${side}`);
+  function setMode(m) {
+    inputMode[side] = m;
+    intBtn.classList.toggle('active', m==='INT');
+    micBtn.classList.toggle('active', m==='MIC');
+    bothBtn.classList.toggle('active', m==='BOTH');
+    applyInputMode(side);
+  }
+  intBtn.addEventListener('click',  () => setMode('INT'));
+  micBtn.addEventListener('click',  () => { if(!micGranted){ alert('Enable mic first'); return; } setMode('MIC'); });
+  bothBtn.addEventListener('click', () => { if(!micGranted){ alert('Enable mic first'); return; } setMode('BOTH'); });
+  if (gainSl) {
+    updateSliderFill(gainSl);
+    gainSl.addEventListener('input', e => {
+      const v = parseFloat(e.target.value); gainVal.textContent = v.toFixed(2); updateSliderFill(e.target);
+      // Set micBusGain directly — same pattern as oscBusGain
+      // Only apply if mic is active on this side; applyInputMode handles the 0/1 gating
+      const micBus = side==='L' ? micBusGainL : micBusGainR;
+      if (micBus && inputMode[side] !== 'INT') micBus.gain.setTargetAtTime(v, actx.currentTime, 0.02);
+    });
+  }
+  if (delaySl) {
+    updateSliderFill(delaySl);
+    delaySl.addEventListener('input', e => {
+      const v = parseFloat(e.target.value); delayVal.textContent = v.toFixed(2) + 's'; updateSliderFill(e.target);
+      const delNode = side==='L' ? micDelayL : micDelayR;
+      if (delNode) delNode.delayTime.setTargetAtTime(v, actx.currentTime, 0.02);
+    });
+  }
+}
+setupInputMode('L'); setupInputMode('R');
+
+// ======================== ENABLE MIC BUTTON ========================
+document.getElementById('enableMicBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('enableMicBtn');
+  try {
+    initAudio();
+    if (actx.state === 'suspended') await actx.resume();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      video: false
+    });
+    micSource = actx.createMediaStreamSource(stream);
+    micSource.connect(micGainNode);
+    micGranted = true;
+    btn.textContent = '✔ MIC ENABLED';
+    btn.classList.add('granted');
+    applyInputMode('L'); applyInputMode('R');
+    refreshMicModulations();
+  } catch(err) {
+    btn.textContent = '✘ MIC DENIED';
+    console.warn('Mic error:', err);
+  }
+});
+
+// ======================== DRAWER TOGGLES ========================
+[['tabOscL','panelOscL'],['tabFiltL','panelFiltL'],['tabOscR','panelOscR'],['tabFiltR','panelFiltR']].forEach(([tabId,panelId])=>{
+  const tab=document.getElementById(tabId), panel=document.getElementById(panelId);
+  tab.addEventListener('click',()=>{ const o=panel.classList.toggle('open'); tab.classList.toggle('open',o); });
+});
+
+// ======================== IND/AVG TOGGLES ========================
+['L','R'].forEach(side=>{
+  const indBtn=document.getElementById(`indBtn${side}`), avgBtn=document.getElementById(`avgBtn${side}`);
+  indBtn.addEventListener('click',()=>{ harmMode[side]='IND'; indBtn.classList.add('active'); avgBtn.classList.remove('active'); doRestart(); });
+  avgBtn.addEventListener('click',()=>{ harmMode[side]='AVG'; avgBtn.classList.add('active'); indBtn.classList.remove('active'); doRestart(); });
+});
+
+// ======================== OUTPUT ROUTING ========================
+function applyOutputRouting(side) {
+  if (!actx) return;
+  const mode = outMode[side];
+  const leftGain  = side === 'L' ? outMixLLeft  : outMixRLeft;
+  const rightGain = side === 'L' ? outMixLRight : outMixRRight;
+  if (!leftGain || !rightGain) return;
+
+  const leftTarget  = (mode === 'LEFT' || mode === 'BOTH') ? 1 : 0;
+  const rightTarget = (mode === 'RIGHT' || mode === 'BOTH') ? 1 : 0;
+  leftGain.gain.setTargetAtTime(leftTarget, actx.currentTime, 0.05);
+  rightGain.gain.setTargetAtTime(rightTarget, actx.currentTime, 0.05);
+}
+function setupOutputButtons(side) {
+  const bothBtn=document.getElementById(side==='L'?'outBtnBothL':'outBtnBothR');
+  const sideBtn=document.getElementById(side==='L'?'outBtnLeftL':'outBtnRightR');
+  const activeClass=side==='L'?'active-L':'active-R';
+  bothBtn.addEventListener('click',()=>{ outMode[side]='BOTH'; bothBtn.classList.add('active-B'); bothBtn.classList.remove(activeClass); sideBtn.classList.remove('active-B','active-L','active-R'); applyOutputRouting(side); });
+  sideBtn.addEventListener('click',()=>{ outMode[side]=side==='L'?'LEFT':'RIGHT'; sideBtn.classList.add(activeClass); sideBtn.classList.remove('active-B'); bothBtn.classList.remove('active-B'); applyOutputRouting(side); });
+}
+setupOutputButtons('L'); setupOutputButtons('R');
+
+// ======================== PERIODIC WAVE GENERATORS ========================
+function makePulseWave(ctx, width) {
+  // width: 0.01 to 0.99, 0.5 = square
+  const N = 256;
+  const real = new Float32Array(N);
+  const imag = new Float32Array(N);
+  for (let k = 1; k < N; k++) {
+    // Fourier coefficients of a pulse wave with duty cycle D
+    imag[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * width);
+  }
+  return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+}
+function makeRampWave(ctx, bias) {
+  // bias: 0 = sawtooth (ramp up), 0.5 = triangle, 1.0 = reverse saw (ramp down)
+  const N = 256;
+  const real = new Float32Array(N);
+  const imag = new Float32Array(N);
+  if (Math.abs(bias - 0.5) < 0.01) {
+    // Triangle: odd harmonics, 1/n^2
+    for (let k = 1; k < N; k += 2) {
+      const sign = Math.floor((k-1)/2) % 2 === 0 ? 1 : -1;
+      imag[k] = sign * (8 / (Math.PI * Math.PI * k * k));
+    }
+  } else {
+    // Blend between sawtooth (bias=0) and reverse saw (bias=1)
+    for (let k = 1; k < N; k++) {
+      // sawtooth: imag[k] = -2/(k*pi) * (-1)^k  (standard)
+      // revsaw:   imag[k] = 2/(k*pi) * (-1)^k
+      const saw    = (2 / (k * Math.PI)) * (k % 2 === 0 ? 1 : -1) * -1;
+      const revsaw = (2 / (k * Math.PI)) * (k % 2 === 0 ? 1 : -1);
+      imag[k] = saw * (1 - bias) + revsaw * bias;
+    }
+  }
+  return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+}
+
+// ======================== OSCILLATOR UNIT ========================
+class OscillatorUnit {
+  constructor(type, side, gridId, label, extraType, extraDefault) {
+    this.type = type; this.side = side; this.gridId = gridId;
+    this.label = label; // e.g. 'a', 'b', 'c'...
+    this.extraType = extraType; // 'pwm' | 'ramp' | null
+    this.extraVal = extraDefault !== undefined ? extraDefault : (extraType === 'pwm' ? 0.5 : 0.0);
+    this.f = 440; this.phase = 0; this.on = false;
+    this.amp = 1.0; this.oscMode = 'sound';
+    this.modSources = {
+      freq:   { period: 'none', magnitude: 'none', periodLfoHz: 5, magDepth: 200, micBoost: 20 },
+      amp:    { period: 'none', magnitude: 'none', periodLfoHz: 5, magDepth: 1.0, micBoost: 20 },
+      phase:  { period: 'none', magnitude: 'none', periodLfoHz: 5, magDepth: 50,  micBoost: 20 },
+      toggle: { period: 'none', magnitude: 'none', periodLfoHz: 5, magDepth: 1.0, micBoost: 20 },
+    };
+    this.modNodes   = { freq: null,   amp: null,   phase: null,   toggle: null   };
+    this.osc = null; this.g = null; this.d = null;
+    this.ampGain = null; this.ctrlGain = null; this.toggleGain = null;
+    this.periodicWave = null;
+    this.render();
+  }
+  getSvgPath() {
+    if (this.extraType === 'pwm') return wavePaths.pulse;
+    if (this.extraType === 'ramp') return wavePaths.ramp;
+    return wavePaths[this.type] || wavePaths.sine;
+  }
+  getDisplayType() {
+    if (this.extraType === 'pwm') return 'PULSE';
+    if (this.extraType === 'ramp') return 'RAMP';
+    return this.type.toUpperCase();
+  }
+  buildPeriodicWave() {
+    if (!actx) return null;
+    if (this.extraType === 'pwm') return makePulseWave(actx, this.extraVal);
+    if (this.extraType === 'ramp') return makeRampWave(actx, this.extraVal);
+    return null;
+  }
+  render() {
+    const div = document.createElement('div');
+    div.className = `wave-unit side-${this.side}`;
+    const extraSlider = this.extraType ? `
+      <div class="unit-extra-slider">
+        <div class="unit-extra-label">
+          <span>${this.extraType === 'pwm' ? 'WIDTH' : 'RAMP'}</span>
+          <span class="extra-val">${this.extraType === 'pwm' ? Math.round(this.extraVal*100)+'%' : (this.extraVal === 0 ? 'SAW' : this.extraVal === 1 ? 'REV' : this.extraVal === 0.5 ? 'TRI' : this.extraVal.toFixed(2))}</span>
+        </div>
+        <input type="range" class="extra-slider" min="${this.extraType === 'pwm' ? '0.01' : '0'}" max="${this.extraType === 'pwm' ? '0.99' : '1'}" step="0.01" value="${this.extraVal}">
+        <div class="snap-pip"></div>
+      </div>` : '';
+    div.innerHTML = `
+      <span class="wave-unit-side">${this.side}</span>
+      <span class="wave-unit-id">${this.side.toLowerCase()}${this.label}</span>
+      <div class="unit-val top-val">0°</div>
+      <div class="dial-box"><div class="dial-track"></div><div class="dial-thumb"></div>
+        <div class="dial-center"><span>${this.getDisplayType()}</span><svg viewBox="0 0 46 20"><path d="${this.getSvgPath()}"/></svg></div>
+      </div>
+      <div class="unit-val bottom-val">440.00 Hz</div>
+      <div class="slave-ctrl-row"><button class="slave-btn m">-</button><div class="slider-wrap"><input type="range" class="s-slider" min="0" max="1" step="0.0001" value="${fToP(440)}"></div><button class="slave-btn p">+</button></div>
+      ${extraSlider}
+      <div class="unit-amp-row">
+        <div class="unit-amp-label"><span>AMP</span><span class="u-amp-val">100%</span></div>
+        <input type="range" class="u-amp-slider" min="0" max="2" step="0.01" value="1">
+      </div>
+      <div class="unit-mod-controls">
+        <button class="u-mod-toggle"><span class="u-mod-toggle-arrow">▼</span> MODULATION</button>
+        <div class="unit-mod-body">
+        <button class="u-mode-btn">SOUND</button>
+        <div class="u-mod-labels"></div>
+        <div class="u-mod-grid">
+          ${[
+            ['freq',  'FREQ MOD',  500,  200,  1,    'Hz'],
+            ['amp',   'AMP MOD',   2.0,  1.0,  0.01, ''],
+            ['phase', 'PHASE MOD', 200,  50,   1,    '¢'],
+            ['toggle','GATE',      1.0,  1.0,  0.01, ''],
+          ].map(([p,lbl,mmax,mdef,mstep,munit]) => `
+          <div class="u-mod-group" data-param="${p}">
+            <div class="u-mod-group-label">${lbl}</div>
+            <div class="u-mod-pair">
+              <span class="u-mod-pair-label">PERIOD</span>
+              <select class="u-mod-sel period-sel" data-param="${p}" data-role="period"><option value="none">–</option><option value="LFO">LFO</option></select>
+              <div class="u-mod-lfo-row period-lfo-row" data-param="${p}">
+                <input type="range" class="u-mod-lfo-slider period-lfo-sl" data-param="${p}" min="0.1" max="50" step="0.1" value="5">
+                <span class="u-mod-lfo-val period-lfo-val" data-param="${p}">5.0Hz</span>
+              </div>
+              <div class="u-mod-lfo-row period-mic-row" data-param="${p}">
+                <input type="range" class="u-mod-lfo-slider period-mic-sl" data-param="${p}" min="1" max="100" step="1" value="20">
+                <span class="u-mod-lfo-val period-mic-val" data-param="${p}">20</span>
+              </div>
+            </div>
+            <div class="u-mod-pair">
+              <span class="u-mod-pair-label">DEPTH</span>
+              <select class="u-mod-sel mag-sel" data-param="${p}" data-role="magnitude"><option value="none">–</option><option value="LFO">LFO</option></select>
+              <div class="u-mod-lfo-row mag-lfo-row" data-param="${p}">
+                <input type="range" class="u-mod-lfo-slider mag-lfo-sl" data-param="${p}" min="0" max="${mmax}" step="${mstep}" value="${mdef}">
+                <span class="u-mod-lfo-val mag-lfo-val" data-param="${p}">${p==='freq'?mdef+'Hz':p==='phase'?mdef+'¢':parseFloat(mdef).toFixed(2)}</span>
+              </div>
+              <div class="u-mod-lfo-row mag-mic-row" data-param="${p}">
+                <input type="range" class="u-mod-lfo-slider mag-mic-sl" data-param="${p}" min="1" max="100" step="1" value="20">
+                <span class="u-mod-lfo-val mag-mic-val" data-param="${p}">20</span>
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>
+        </div>
+      </div>
+    `;
+    document.getElementById(this.gridId).appendChild(div);
+    this.dom = {
+      container: div, theta: div.querySelector('.top-val'), hz: div.querySelector('.bottom-val'),
+      track: div.querySelector('.dial-track'), thumb: div.querySelector('.dial-thumb'),
+      center: div.querySelector('.dial-center'), box: div.querySelector('.dial-box'),
+      slider: div.querySelector('.s-slider'), btnP: div.querySelector('.p'), btnM: div.querySelector('.m'),
+      extraSlider: div.querySelector('.extra-slider'), extraVal: div.querySelector('.extra-val'),
+      ampSlider: div.querySelector('.u-amp-slider'), ampValDisplay: div.querySelector('.u-amp-val'),
+      modeBtn: div.querySelector('.u-mode-btn'),
+      modToggle: div.querySelector('.u-mod-toggle'),
+      modBody: div.querySelector('.unit-mod-body')
+    };
+    updateSliderFill(this.dom.slider);
+    if (this.dom.extraSlider) updateSliderFill(this.dom.extraSlider);
+    updateSliderFill(this.dom.ampSlider);
+    this.dom.center.onclick = e => { e.stopPropagation(); this.toggle(); };
+    this.dom.modeBtn.onclick = e => { e.stopPropagation(); this.setOscMode(this.oscMode === 'sound' ? 'signal' : 'sound'); };
+    this.dom.modToggle.onclick = e => {
+      e.stopPropagation();
+      const open = this.dom.modBody.classList.toggle('open');
+      this.dom.modToggle.classList.toggle('open', open);
+    };
+    this.dom.ampSlider.oninput = e => {
+      this.amp = parseFloat(e.target.value);
+      this.dom.ampValDisplay.textContent = Math.round(this.amp * 100) + '%';
+      updateSliderFill(e.target);
+      if (this.ampGain && actx) this.ampGain.gain.setTargetAtTime(this.amp, actx.currentTime, 0.02);
+    };
+    this.setupCircularSlider();
+    this.dom.slider.oninput = e => { this.setF(pToF(e.target.value)); updateSliderFill(e.target); };
+    this.bindAccel(this.dom.btnP, 1); this.bindAccel(this.dom.btnM, -1);
+    if (this.dom.extraSlider) {
+      this.dom.extraSlider.addEventListener('input', e => {
+        let raw = parseFloat(e.target.value);
+        // Snap to 0.5 (triangle midpoint) within threshold
+        if (Math.abs(raw - 0.5) < 0.03) raw = 0.5;
+        // For PWM also snap to 0.5 (square)
+        this.dom.extraSlider.value = raw;
+        this.extraVal = raw;
+        updateSliderFill(e.target);
+        let label;
+        if (this.extraType === 'pwm') {
+          label = Math.round(raw * 100) + '%';
+        } else {
+          label = raw === 0 ? 'SAW' : raw === 1 ? 'REV' : raw === 0.5 ? 'TRI' : raw.toFixed(2);
+        }
+        if (this.dom.extraVal) this.dom.extraVal.textContent = label;
+        // Rebuild PeriodicWave and restart
+        if (actx) {
+          this.periodicWave = this.buildPeriodicWave();
+          doRestart();
+        }
+      });
+    }
+  }
+  setOscMode(mode) {
+    this.oscMode = mode;
+    this.dom.modeBtn.textContent = mode === 'sound' ? 'SOUND' : 'SIGNAL';
+    this.dom.modeBtn.classList.toggle('signal-mode', mode === 'signal');
+    if (this.ampGain && actx) {
+      try { this.ampGain.disconnect(); } catch(e) {}
+      if (mode === 'sound') {
+        const oscBusGain = this.side === 'L' ? oscBusGainL : oscBusGainR;
+        this.ampGain.connect(oscBusGain);
+      }
+    }
+  }
+  setupCircularSlider() {
+    const move = e => {
+      const rect = this.dom.box.getBoundingClientRect();
+      const x = (e.clientX||e.touches[0].clientX) - (rect.left + rect.width/2);
+      const y = (e.clientY||e.touches[0].clientY) - (rect.top + rect.height/2);
+      let a = Math.atan2(y,x)*(180/Math.PI)+90; if(a<0) a+=360;
+      this.setPhase(Math.round(a));
+    };
+    this.dom.box.onpointerdown = e => {
+      const rect = this.dom.box.getBoundingClientRect();
+      const x = e.clientX-(rect.left+rect.width/2), y = e.clientY-(rect.top+rect.height/2);
+      if(Math.sqrt(x*x+y*y)<38) return;
+      this.dom.box.setPointerCapture(e.pointerId); this.dom.box.onpointermove=move; move(e);
+    };
+    this.dom.box.onpointerup = () => this.dom.box.onpointermove = null;
+  }
+  bindAccel(btn, dir) {
+    let t, a; const stop = () => clearTimeout(t);
+    btn.onpointerdown = () => {
+      this.setF(this.f + dir*0.01); a = 0.1;
+      t = setTimeout(function r(){ this.setF(this.f+dir*a); a+=0.1; t=setTimeout(r.bind(this),100); }.bind(this),300);
+    };
+    btn.onpointerup = stop; btn.onpointerleave = stop;
+  }
+  toggle() {
+    this.on = !this.on; this.dom.container.classList.toggle('on', this.on);
+    doRestart();
+  }
+  setF(val, suppressRestart=false) {
+    this.f = Math.max(1, Math.min(16000, Math.round(val*100)/100));
+    this.dom.hz.innerText = this.f.toFixed(2)+' Hz';
+    this.dom.slider.value = fToP(this.f); updateSliderFill(this.dom.slider);
+    if(this.osc) this.osc.frequency.setTargetAtTime(this.f, actx.currentTime, 0.01);
+    if(this.d) this.updateD();
+    if(suppressRestart) return;
+    if(actx) {
+      if(playingL||playingR) { doRestart(); }
+      else updateFilterFreqs(this.side, getAvgFreq(this.side));
+    }
+  }
+  setPhase(p) {
+    this.phase = p; this.dom.theta.innerText = p+'°';
+    this.dom.track.style.setProperty('--p', (p/360)*100+'%');
+    this.dom.thumb.style.setProperty('--p-deg', p+'deg');
+    if(this.d) this.updateD();
+  }
+  updateD() { this.d.delayTime.setTargetAtTime((this.phase/360)*(1/this.f), actx.currentTime, 0.01); }
+}
+
+function getAvgFreq(side) {
+  const units = side === 'L' ? unitsL : unitsR;
+  const active = units.filter(u => u.on);
+  if (active.length === 0) return pToF(document.getElementById(`mSlider${side}`).value);
+  return active.reduce((sum, u) => sum + u.f, 0) / active.length;
+}
+
+// ======================== MODULATION ENGINE ========================
+let allUnits = [];
+
+function clearMods(u) {
+  Object.keys(u.modNodes).forEach(param => {
+    const n = u.modNodes[param];
+    if (!n) return;
+    if (n.lfoOsc) { try { n.lfoOsc.stop(); } catch(e) {} try { n.lfoOsc.disconnect(); } catch(e) {} }
+    try { if (n.periodGain)    n.periodGain.disconnect(); }    catch(e) {}
+    try { if (n.magGain)       n.magGain.disconnect(); }       catch(e) {}
+    try { if (n.multiplier)    n.multiplier.disconnect(); }    catch(e) {}
+    try { if (n.periodHighpass) n.periodHighpass.disconnect(); } catch(e) {}
+    try { if (n.periodBoost)    n.periodBoost.disconnect(); }    catch(e) {}
+    try { if (n.magHighpass)    n.magHighpass.disconnect(); }    catch(e) {}
+    try { if (n.magBoost)       n.magBoost.disconnect(); }       catch(e) {}
+    if (param === 'toggle') {
+      try { if (n.shaper)       n.shaper.disconnect(); }       catch(e) {}
+      try { if (n.gateAnalyser) n.gateAnalyser.disconnect(); } catch(e) {}
+      if (u.toggleGain) u.toggleGain.gain.value = 1;
+    }
+    u.modNodes[param] = null;
+  });
+}
+
+function connectMod(targetUnit, param) {
+  if (!actx || !targetUnit.osc) return;
+  const src = targetUnit.modSources[param];
+  const periodSrc = src.period;
+  const magSrc    = src.magnitude;
+  if (periodSrc === 'none' || magSrc === 'none') return;
+
+  // ── Period path ──────────────────────────────────────
+  let lfoOsc = null, periodHighpass = null, periodBoost = null;
+  const periodGain = actx.createGain();
+  periodGain.gain.value = 1;
+
+  if (periodSrc === 'LFO') {
+    lfoOsc = actx.createOscillator();
+    lfoOsc.type = 'sine';
+    lfoOsc.frequency.setValueAtTime(src.periodLfoHz, actx.currentTime);
+    lfoOsc.connect(periodGain);
+    lfoOsc.start();
+  } else if (periodSrc === 'MIC') {
+    if (!micGainNode || !micGranted) return;
+    periodHighpass = actx.createBiquadFilter();
+    periodHighpass.type = 'highpass';
+    periodHighpass.frequency.value = 20;
+    periodHighpass.Q.value = 0.5;
+    periodBoost = actx.createGain();
+    periodBoost.gain.value = src.micBoost;
+    micGainNode.connect(periodHighpass);
+    periodHighpass.connect(periodBoost);
+    periodBoost.connect(periodGain);
+  } else {
+    const pUnit = allUnits.find(x => (x.side.toLowerCase() + x.label) === periodSrc);
+    if (!pUnit || !pUnit.ctrlGain) return;
+    pUnit.ctrlGain.connect(periodGain);
+  }
+
+  // ── Multiplier: output = periodGain × mag ────────────
+  const multiplier = actx.createGain();
+  periodGain.connect(multiplier);
+
+  let magGain = null, magHighpass = null, magBoost = null;
+
+  if (magSrc === 'LFO') {
+    multiplier.gain.value = src.magDepth;
+  } else if (magSrc === 'MIC') {
+    if (!micGainNode || !micGranted) {
+      try { periodGain.disconnect(); } catch(e) {}
+      if (lfoOsc) { try { lfoOsc.stop(); lfoOsc.disconnect(); } catch(e) {} }
+      if (periodHighpass) { try { periodHighpass.disconnect(); } catch(e) {} }
+      if (periodBoost)    { try { periodBoost.disconnect(); } catch(e) {} }
+      return;
+    }
+    magHighpass = actx.createBiquadFilter();
+    magHighpass.type = 'highpass';
+    magHighpass.frequency.value = 20;
+    magHighpass.Q.value = 0.5;
+    magBoost = actx.createGain();
+    magBoost.gain.value = src.micBoost;
+    magGain = actx.createGain();
+    magGain.gain.value = src.magDepth;
+    multiplier.gain.value = 0;
+    micGainNode.connect(magHighpass);
+    magHighpass.connect(magBoost);
+    magBoost.connect(magGain);
+    magGain.connect(multiplier.gain);
+  } else {
+    const mUnit = allUnits.find(x => (x.side.toLowerCase() + x.label) === magSrc);
+    if (!mUnit || !mUnit.ctrlGain) {
+      try { periodGain.disconnect(); } catch(e) {}
+      if (lfoOsc) { try { lfoOsc.stop(); lfoOsc.disconnect(); } catch(e) {} }
+      if (periodHighpass) { try { periodHighpass.disconnect(); } catch(e) {} }
+      if (periodBoost)    { try { periodBoost.disconnect(); } catch(e) {} }
+      return;
+    }
+    magGain = actx.createGain();
+    magGain.gain.value = src.magDepth;
+    multiplier.gain.value = 0;
+    mUnit.ctrlGain.connect(magGain);
+    magGain.connect(multiplier.gain);
+  }
+
+  // ── Route multiplier output to target AudioParam ─────
+  if (param === 'toggle') {
+    const N = 1024, curve = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const x = (i / (N - 1)) * 2 - 1; curve[i] = Math.max(0, x); }
+    const shaper = actx.createWaveShaper();
+    shaper.curve = curve; shaper.oversample = '4x';
+    const gateAnalyser = actx.createAnalyser();
+    gateAnalyser.fftSize = 256; gateAnalyser.smoothingTimeConstant = 0;
+    multiplier.connect(shaper);
+    shaper.connect(gateAnalyser);
+    shaper.connect(targetUnit.toggleGain.gain);
+    targetUnit.toggleGain.gain.value = 0;
+    targetUnit.modNodes[param] = {
+      lfoOsc, periodGain, magGain, multiplier, shaper, gateAnalyser,
+      periodHighpass, periodBoost, magHighpass, magBoost
+    };
+  } else {
+    if (param === 'freq')  multiplier.connect(targetUnit.osc.frequency);
+    if (param === 'amp')   multiplier.connect(targetUnit.ampGain.gain);
+    if (param === 'phase') multiplier.connect(targetUnit.osc.detune);
+    targetUnit.modNodes[param] = {
+      lfoOsc, periodGain, magGain, multiplier,
+      periodHighpass, periodBoost, magHighpass, magBoost
+    };
+  }
+}
+
+function applyRouting(u) {
+  if (!actx || !u.osc) return;
+  clearMods(u);
+  for (const param of ['freq', 'amp', 'phase', 'toggle']) {
+    const { period, magnitude } = u.modSources[param];
+    if (period === 'none' || magnitude === 'none') continue;
+    connectMod(u, param);
+  }
+}
+
+function refreshMicModulations() {
+  if (!micGranted) return;
+  let needsRefresh = false;
+  allUnits.forEach(u => {
+    ['freq', 'amp', 'phase', 'toggle'].forEach(param => {
+      const src = u.modSources[param];
+      if (src.period === 'MIC' || src.magnitude === 'MIC') needsRefresh = true;
+    });
+  });
+  if (needsRefresh) {
+    setTimeout(() => { allUnits.forEach(u => applyRouting(u)); }, 100);
+  }
+}
+
+function populateModDropdowns() {
+  const labels = allUnits.map(u => u.side.toLowerCase() + u.label);
+  const magMaxes = { freq: 500, amp: 2.0, phase: 200, toggle: 1.0 };
+  const fmtMag = (param, v) => {
+    if (param === 'freq')  return Math.round(v) + 'Hz';
+    if (param === 'phase') return Math.round(v) + '¢';
+    return parseFloat(v).toFixed(2);
+  };
+
+  allUnits.forEach(u => {
+    ['freq', 'amp', 'phase', 'toggle'].forEach(param => {
+      const group = u.dom.container.querySelector(`.u-mod-group[data-param="${param}"]`);
+      if (!group) return;
+
+      const periodSel    = group.querySelector('.period-sel');
+      const magSel       = group.querySelector('.mag-sel');
+      const periodLfoRow = group.querySelector('.period-lfo-row');
+      const magLfoRow    = group.querySelector('.mag-lfo-row');
+      const periodMicRow = group.querySelector('.period-mic-row');
+      const magMicRow    = group.querySelector('.mag-mic-row');
+      const periodLfoSl  = group.querySelector('.period-lfo-sl');
+      const periodLfoVal = group.querySelector('.period-lfo-val');
+      const magLfoSl     = group.querySelector('.mag-lfo-sl');
+      const magLfoVal    = group.querySelector('.mag-lfo-val');
+      const periodMicSl  = group.querySelector('.period-mic-sl');
+      const periodMicVal = group.querySelector('.period-mic-val');
+      const magMicSl     = group.querySelector('.mag-mic-sl');
+      const magMicVal    = group.querySelector('.mag-mic-val');
+
+      // Populate both dropdowns with MIC + unit labels
+      [periodSel, magSel].forEach(sel => {
+        const micOpt = document.createElement('option');
+        micOpt.value = 'MIC'; micOpt.textContent = 'MIC';
+        sel.appendChild(micOpt);
+        labels.forEach(lbl => {
+          const opt = document.createElement('option');
+          opt.value = lbl; opt.textContent = lbl.toUpperCase();
+          sel.appendChild(opt);
+        });
+      });
+
+      // Restore saved state
+      const src = u.modSources[param];
+      periodSel.value = src.period;
+      magSel.value    = src.magnitude;
+      if (src.period === 'LFO')    periodLfoRow.classList.add('visible');
+      if (src.period === 'MIC')    periodMicRow.classList.add('visible');
+      if (src.magnitude === 'LFO') magLfoRow.classList.add('visible');
+      if (src.magnitude === 'MIC') magMicRow.classList.add('visible');
+      if (periodLfoSl) { periodLfoSl.value = src.periodLfoHz; updateSliderFill(periodLfoSl); periodLfoVal.textContent = src.periodLfoHz.toFixed(1) + 'Hz'; }
+      if (magLfoSl)    { magLfoSl.value = src.magDepth; updateSliderFill(magLfoSl); magLfoVal.textContent = fmtMag(param, src.magDepth); }
+      if (periodMicSl) { periodMicSl.value = src.micBoost; updateSliderFill(periodMicSl); periodMicVal.textContent = src.micBoost; }
+      if (magMicSl)    { magMicSl.value = src.micBoost; updateSliderFill(magMicSl); magMicVal.textContent = src.micBoost; }
+
+      // Active styling helper
+      const styleActive = (sel, active) => {
+        if (param === 'toggle') { sel.classList.toggle('gate-active', active); sel.classList.remove('active'); }
+        else                    { sel.classList.toggle('active', active); sel.classList.remove('gate-active'); }
+      };
+      styleActive(periodSel, src.period !== 'none');
+      styleActive(magSel,    src.magnitude !== 'none');
+
+      // ── Shared boost updater (both mic rows share src.micBoost) ──
+      const updateBoostLive = (val) => {
+        src.micBoost = val;
+        const n = u.modNodes[param];
+        if (n) {
+          if (n.periodBoost) n.periodBoost.gain.setTargetAtTime(val, actx.currentTime, 0.02);
+          if (n.magBoost)    n.magBoost.gain.setTargetAtTime(val, actx.currentTime, 0.02);
+        }
+      };
+      const syncBoostSliders = (val) => {
+        if (periodMicSl) { periodMicSl.value = val; updateSliderFill(periodMicSl); periodMicVal.textContent = val; }
+        if (magMicSl)    { magMicSl.value = val; updateSliderFill(magMicSl); magMicVal.textContent = val; }
+      };
+
+      // ── Period dropdown ──
+      periodSel.onchange = () => {
+        src.period = periodSel.value;
+        periodLfoRow.classList.toggle('visible', src.period === 'LFO');
+        periodMicRow.classList.toggle('visible', src.period === 'MIC');
+        styleActive(periodSel, src.period !== 'none');
+        applyRouting(u);
+      };
+
+      // ── Magnitude dropdown ──
+      magSel.onchange = () => {
+        src.magnitude = magSel.value;
+        magLfoRow.classList.toggle('visible', src.magnitude === 'LFO');
+        magMicRow.classList.toggle('visible', src.magnitude === 'MIC');
+        styleActive(magSel, src.magnitude !== 'none');
+        applyRouting(u);
+      };
+
+      // ── Period LFO slider ──
+      if (periodLfoSl) {
+        periodLfoSl.oninput = () => {
+          const hz = parseFloat(periodLfoSl.value);
+          src.periodLfoHz = hz;
+          periodLfoVal.textContent = hz.toFixed(1) + 'Hz';
+          updateSliderFill(periodLfoSl);
+          const n = u.modNodes[param];
+          if (n && n.lfoOsc) n.lfoOsc.frequency.setTargetAtTime(hz, actx.currentTime, 0.02);
+        };
+        periodLfoVal.onclick = () => {
+          const raw = prompt('Period LFO Hz (0.1 – 50):', src.periodLfoHz);
+          if (raw === null) return;
+          const val = Math.max(0.1, Math.min(50, parseFloat(raw) || 5));
+          src.periodLfoHz = val;
+          periodLfoSl.value = val; periodLfoVal.textContent = val.toFixed(1) + 'Hz';
+          updateSliderFill(periodLfoSl);
+          const n = u.modNodes[param];
+          if (n && n.lfoOsc) n.lfoOsc.frequency.setTargetAtTime(val, actx.currentTime, 0.02);
+        };
+      }
+
+      // ── Period MIC boost slider ──
+      if (periodMicSl) {
+        periodMicSl.oninput = () => {
+          const v = parseInt(periodMicSl.value);
+          syncBoostSliders(v); updateBoostLive(v);
+        };
+        periodMicVal.onclick = () => {
+          const raw = prompt('MIC boost (1–100):', src.micBoost);
+          if (raw === null) return;
+          const v = Math.max(1, Math.min(100, parseInt(raw) || 20));
+          syncBoostSliders(v); updateBoostLive(v);
+        };
+      }
+
+      // ── Depth slider ──
+      if (magLfoSl) {
+        magLfoSl.oninput = () => {
+          const d = parseFloat(magLfoSl.value);
+          src.magDepth = d;
+          magLfoVal.textContent = fmtMag(param, d);
+          updateSliderFill(magLfoSl);
+          const n = u.modNodes[param];
+          if (n) {
+            if (src.magnitude === 'LFO') {
+              if (n.multiplier) n.multiplier.gain.setTargetAtTime(d, actx.currentTime, 0.02);
+            } else if (n.magGain) {
+              n.magGain.gain.setTargetAtTime(d, actx.currentTime, 0.02);
+            }
+          }
+        };
+        magLfoVal.onclick = () => {
+          const maxV = magMaxes[param];
+          const raw = prompt(`Depth (0 – ${maxV}):`, src.magDepth);
+          if (raw === null) return;
+          const val = Math.max(0, Math.min(maxV, parseFloat(raw)));
+          if (isNaN(val)) return;
+          src.magDepth = val;
+          magLfoSl.value = val; magLfoVal.textContent = fmtMag(param, val);
+          updateSliderFill(magLfoSl);
+          const n = u.modNodes[param];
+          if (n) {
+            if (src.magnitude === 'LFO') {
+              if (n.multiplier) n.multiplier.gain.setTargetAtTime(val, actx.currentTime, 0.02);
+            } else if (n.magGain) {
+              n.magGain.gain.setTargetAtTime(val, actx.currentTime, 0.02);
+            }
+          }
+        };
+      }
+
+      // ── Magnitude MIC boost slider ──
+      if (magMicSl) {
+        magMicSl.oninput = () => {
+          const v = parseInt(magMicSl.value);
+          syncBoostSliders(v); updateBoostLive(v);
+        };
+        magMicVal.onclick = () => {
+          const raw = prompt('MIC boost (1–100):', src.micBoost);
+          if (raw === null) return;
+          const v = Math.max(1, Math.min(100, parseInt(raw) || 20));
+          syncBoostSliders(v); updateBoostLive(v);
+        };
+      }
+    });
+  });
+}
+
+// ======================== BUILD WAVE GRIDS ========================
+// Labels: a,b for sine; c,d for square; e,f for ramp
+function addSineRow(grid, label1, label2) {
+  const lbl = document.createElement('div'); lbl.className='wave-row-label'; lbl.textContent='SINE'; grid.appendChild(lbl);
+  const uL = new OscillatorUnit('sine','L',grid.id,label1,null);
+  const uR = new OscillatorUnit('sine','R',grid.id,label2,null);
+  unitsL.push(uL); unitsR.push(uR);
+}
+function addSquareRow(grid, label1, label2) {
+  const lbl = document.createElement('div'); lbl.className='wave-row-label'; lbl.textContent='SQUARE · PWM'; grid.appendChild(lbl);
+  const uL = new OscillatorUnit('custom','L',grid.id,label1,'pwm',0.5);
+  const uR = new OscillatorUnit('custom','R',grid.id,label2,'pwm',0.5);
+  unitsL.push(uL); unitsR.push(uR);
+}
+function addRampRow(grid, label1, label2) {
+  const lbl = document.createElement('div'); lbl.className='wave-row-label'; lbl.textContent='RAMP · SAW / TRI / REV'; grid.appendChild(lbl);
+  const uL = new OscillatorUnit('custom','L',grid.id,label1,'ramp',0.0);
+  const uR = new OscillatorUnit('custom','R',grid.id,label2,'ramp',0.0);
+  unitsL.push(uL); unitsR.push(uR);
+}
+
+const sineGrid = document.getElementById('sineGrid');
+const sqGrid   = document.getElementById('sqGrid');
+const rampGrid = document.getElementById('rampGrid');
+
+addSineRow(sineGrid, 'a', 'a');
+addSineRow(sineGrid, 'b', 'b');
+addSquareRow(sqGrid, 'c', 'c');
+addSquareRow(sqGrid, 'd', 'd');
+addRampRow(rampGrid, 'e', 'e');
+addRampRow(rampGrid, 'f', 'f');
+
+// Build combined unit list and wire mod dropdowns
+allUnits = [...unitsL, ...unitsR];
+populateModDropdowns();
+
+// ======================== MASTER MIC BOOST SLIDER ========================
+(function() {
+  const sl  = document.getElementById('micMasterBoostSl');
+  const val = document.getElementById('micMasterBoostVal');
+  if (!sl) return;
+  updateSliderFill(sl);
+  const applyBoost = (v) => {
+    micMasterBoost = v;
+    val.textContent = v;
+    sl.value = v;
+    updateSliderFill(sl);
+    allUnits.forEach(u => {
+      ['freq','amp','phase','toggle'].forEach(param => {
+        const src = u.modSources[param];
+        src.micBoost = v;
+        const group = u.dom.container.querySelector(`.u-mod-group[data-param="${param}"]`);
+        if (!group) return;
+        ['period-mic-sl','mag-mic-sl'].forEach(cls => {
+          const s = group.querySelector('.' + cls);
+          if (s) { s.value = v; updateSliderFill(s); }
+        });
+        ['period-mic-val','mag-mic-val'].forEach(cls => {
+          const e = group.querySelector('.' + cls);
+          if (e) e.textContent = v;
+        });
+        const n = u.modNodes[param];
+        if (n && actx) {
+          if (n.periodBoost) n.periodBoost.gain.setTargetAtTime(v, actx.currentTime, 0.02);
+          if (n.magBoost)    n.magBoost.gain.setTargetAtTime(v, actx.currentTime, 0.02);
+        }
+      });
+    });
+  };
+  sl.oninput = () => applyBoost(parseInt(sl.value));
+  val.addEventListener('click', () => {
+    const raw = prompt('MOD BOOST (1–100):', micMasterBoost);
+    if (raw === null) return;
+    applyBoost(Math.max(1, Math.min(100, parseInt(raw) || 20)));
+  });
+})();
+
+// ======================== COLLAPSIBLES ========================
+function setupCollapsible(toggleId, contentId) {
+  const toggle = document.getElementById(toggleId), content = document.getElementById(contentId);
+  toggle.addEventListener('click', () => { toggle.classList.toggle('open'); content.classList.toggle('open'); });
+}
+setupCollapsible('masterCollapseToggle', 'masterCollapseContent');
+setupCollapsible('micGlobalToggle',      'micGlobalContent');
+setupCollapsible('sineBankToggle',       'sineBankContent');
+setupCollapsible('sqBankToggle',         'sqBankContent');
+setupCollapsible('rampBankToggle',       'rampBankContent');
+setupCollapsible('waveCollapseToggle',   'waveCollapseContent');
+setupCollapsible('fftCollapseToggle',    'fftCollapseContent');
+setupCollapsible('lissCollapseToggle',   'lissCollapseContent');
+
+// ======================== ENGINE START / STOP ========================
+function startEngine(side, startTime=null) {
+  const units = side==='L' ? unitsL : unitsR;
+  const oscBusGain = side==='L' ? oscBusGainL : oscBusGainR;
+  const masterGain = side==='L' ? masterGainL : masterGainR;
+  if(startTime===null) startTime = actx.currentTime + 0.05;
+  const activeCount = units.filter(u=>u.on).length;
+  const vol = activeCount > 0 ? 1/activeCount : 0;
+  units.forEach(u => {
+    u.osc = actx.createOscillator(); u.g = actx.createGain(); u.d = actx.createDelay(2.0);
+    u.ampGain = actx.createGain(); u.ctrlGain = actx.createGain(); u.toggleGain = actx.createGain();
+    // Build periodic wave if needed
+    if (u.extraType) {
+      u.periodicWave = u.buildPeriodicWave();
+      if (u.periodicWave) u.osc.setPeriodicWave(u.periodicWave);
+      else u.osc.type = 'sine';
+    } else {
+      u.osc.type = u.type;
+    }
+    u.osc.frequency.setValueAtTime(u.f, startTime); u.updateD();
+    // Signal path — always alive (modulation source)
+    u.osc.connect(u.ctrlGain);
+    u.ctrlGain.gain.setValueAtTime(1, startTime);
+    // Audio path: osc → delay → g (vol scaling) → toggleGain (gate) → ampGain (user amp) → bus
+    u.osc.connect(u.d); u.d.connect(u.g); u.g.connect(u.toggleGain);
+    u.toggleGain.gain.setValueAtTime(1, startTime); // 1 = pass-through when no gate source
+    u.toggleGain.connect(u.ampGain);
+    u.ampGain.gain.setValueAtTime(u.amp, startTime);
+    if (u.oscMode === 'sound') u.ampGain.connect(oscBusGain);
+    u.g.gain.setValueAtTime(u.on ? vol : 0, startTime);
+    u.osc.start(startTime);
+  });
+  // Apply modulation routing after all nodes exist
+  allUnits.forEach(u => applyRouting(u));
+  const panelId = side==='L' ? 'panelFiltL' : 'panelFiltR';
+  document.querySelectorAll(`#${panelId} .hbtn.on`).forEach(btn => {
+    const s = SERIES.find(x=>x.id===btn.dataset.id); if(s) buildFilterLayer(side, s);
+  });
+  startOscLayers(side, startTime);
+}
+function stopEngine(side) {
+  stopOscLayers(side);
+  const units = side==='L' ? unitsL : unitsR;
+  Object.keys(filtLayers[side]).forEach(id => teardownFilterLayer(side, SERIES.find(s=>s.id===id)));
+  units.forEach(u => {
+    if(u.osc) {
+      clearMods(u);
+      u.g.gain.cancelScheduledValues(actx.currentTime);
+      u.g.gain.linearRampToValueAtTime(0, actx.currentTime+0.05);
+      u.osc.stop(actx.currentTime+0.1);
+      try{ u.osc.disconnect(); }catch(e){}
+      try{ u.g.disconnect(); }catch(e){}
+      try{ u.d.disconnect(); }catch(e){}
+      try{ u.ampGain.disconnect(); }catch(e){}
+      try{ u.ctrlGain.disconnect(); }catch(e){}
+      try{ u.toggleGain.disconnect(); }catch(e){}
+      u.osc=null; u.g=null; u.d=null; u.ampGain=null; u.ctrlGain=null; u.toggleGain=null;
+    }
+  });
+}
+
+// ======================== MASTER CONTROLS ========================
+function setupMaster(side) {
+  const mSlider = document.getElementById(`mSlider${side}`);
+  const mFreqTxt = document.getElementById(`mFreqTxt${side}`);
+  const ampSlider = document.getElementById(`ampSlider${side}`);
+  const mPhaseSlider = document.getElementById(`mPhaseSlider${side}`);
+  const ampValue = document.getElementById(`ampValue${side}`);
+  const statusDot = document.getElementById(`statusDot${side}`);
+  const statusText = document.getElementById(`statusText${side}`);
+  const masterGain = () => side==='L' ? masterGainL : masterGainR;
+  const units = side==='L' ? unitsL : unitsR;
+  mSlider.value = fToP(440); updateSliderFill(mSlider);
+  updateSliderFill(mPhaseSlider); updateSliderFill(ampSlider);
+  function syncFreq(f) {
+    const v = Math.round(f*100)/100;
+    mFreqTxt.innerText = v.toFixed(2);
+    mSlider.value = fToP(v); updateSliderFill(mSlider);
+    units.forEach(u => u.setF(v, true));
+    if(actx) {
+      if(playingL||playingR) doRestart();
+      else updateFilterFreqs(side, getAvgFreq(side));
+    }
+  }
+  function syncPhase(p) {
+    const v = Math.max(0, Math.min(360, Math.round(p)));
+    mPhaseSlider.value = v; updateSliderFill(mPhaseSlider);
+    units.forEach(u => u.setPhase(v));
+    if(actx && (playingL||playingR)) doRestart();
+  }
+  mSlider.oninput = e => syncFreq(pToF(e.target.value));
+  mPhaseSlider.oninput = e => syncPhase(e.target.value);
+  function bindAcc(btnId, el, dir, isPhase) {
+    const btn = document.getElementById(btnId); let t, a;
+    btn.onpointerdown = () => {
+      const getVal = () => isPhase ? parseInt(el.value) : units[0].f;
+      const upd = () => isPhase ? syncPhase(getVal()+dir) : syncFreq(getVal()+dir*0.01);
+      upd(); a = 0.1;
+      t = setTimeout(function r(){
+        isPhase?syncPhase(getVal()+dir*Math.max(1,Math.round(a))):syncFreq(getVal()+dir*a);
+        a += isPhase?1:0.1; t=setTimeout(r,100);
+      },300);
+    };
+    btn.onpointerup = ()=>clearTimeout(t); btn.onpointerleave = ()=>clearTimeout(t);
+  }
+  bindAcc(`mPlus${side}`,  mSlider, 1,  false); bindAcc(`mMinus${side}`,  mSlider, -1, false);
+  bindAcc(`mPhasePlus${side}`,  mPhaseSlider, 1,  true);  bindAcc(`mPhaseMinus${side}`,  mPhaseSlider, -1, true);
+  ampSlider.oninput = e => {
+    const db = parseInt(e.target.value);
+    ampValue.innerText = (db>0?'+':'')+db+' dB'; updateSliderFill(e.target);
+    const linear = dbToLinear(db);
+    if(masterGain()) masterGain().gain.setTargetAtTime(linear, actx.currentTime, 0.02);
+    const fmg = side==='L' ? filterMasterGainL : filterMasterGainR;
+    if(fmg) fmg.gain.setTargetAtTime(linear, actx.currentTime, 0.02);
+  };
+  mFreqTxt.onclick = async () => {
+    initAudio();
+    if(actx.state==='suspended') await actx.resume();
+    if(side==='L') playingL=!playingL; else playingR=!playingR;
+    const playing = side==='L' ? playingL : playingR;
+    mFreqTxt.classList.toggle('playing', playing);
+    if(playing) {
+      statusDot.classList.add('active'); statusText.innerText='GENERATING';
+      if(playingL) stopEngine('L'); if(playingR) stopEngine('R');
+      const sharedStart = actx.currentTime+0.05;
+      if(playingL) startEngine('L', sharedStart); if(playingR) startEngine('R', sharedStart);
+      drawLoop();
+    } else {
+      statusDot.classList.remove('active'); statusText.innerText='STANDBY — TAP FREQ TO PLAY';
+      stopEngine(side);
+      if(!playingL&&!playingR) drawAllSilence();
+    }
+  };
+}
+setupMaster('L'); setupMaster('R');
+setupFeedbackControls('L'); setupFeedbackControls('R');
+
+// ======================== GLOBAL KILL ========================
+document.getElementById('killAll').onclick = () => {
+  if(playingL){ stopEngine('L'); playingL=false; }
+  if(playingR){ stopEngine('R'); playingR=false; }
+  ['L','R'].forEach(side => {
+    const units = side==='L' ? unitsL : unitsR;
+    units.forEach(u => { u.on=false; u.dom.container.classList.remove('on'); });
+    oscActive[side].clear();
+    updateOscStatus(side); updateFiltStatus(side);
+    // Zero feedback gains
+    if(fbNodes[side].gain) fbNodes[side].gain.gain.setTargetAtTime(0, actx ? actx.currentTime : 0, 0.05);
+    document.getElementById(`fbGainSlider${side}`).value = 0;
+    document.getElementById(`fbGainVal${side}`).textContent = '0.00';
+    updateSliderFill(document.getElementById(`fbGainSlider${side}`));
+    updateFbModeDisplay(side, 0);
+  });
+  ['panelOscL','panelOscR','panelFiltL','panelFiltR'].forEach(pid => {
+    document.querySelectorAll(`#${pid} .hbtn.on`).forEach(b => b.classList.remove('on'));
+  });
+  ['L','R'].forEach(side => {
+    document.getElementById(`statusDot${side}`).classList.remove('active');
+    document.getElementById(`statusText${side}`).innerText = 'STANDBY — TAP FREQ TO PLAY';
+    document.getElementById(`mFreqTxt${side}`).classList.remove('playing');
+  });
+  drawAllSilence();
+};
+
+// ======================== VISUALIZER SYSTEM ========================
+const cvs    = { main:document.getElementById('viz'),  L:document.getElementById('vizL'),  R:document.getElementById('vizR') };
+const fftCvs = { main:document.getElementById('fft'),  L:document.getElementById('fftL'),  R:document.getElementById('fftR') };
+const ctx2d  = { main:cvs.main.getContext('2d'),  L:cvs.L.getContext('2d'),  R:cvs.R.getContext('2d') };
+const fftCtx = { main:fftCvs.main.getContext('2d'), L:fftCvs.L.getContext('2d'), R:fftCvs.R.getContext('2d') };
+const COLORS = {
+  main:{ wave:'#00d4ff', glow:'rgba(0,212,255,0.5)', mid:'rgba(0,212,255,0.2)', fft:'#00d4ff', fftGlow:'rgba(0,212,255,0.4)' },
+  L:   { wave:'#44bbff', glow:'rgba(68,187,255,0.4)',  mid:'rgba(68,187,255,0.15)',  fft:'#44bbff', fftGlow:'rgba(68,187,255,0.3)' },
+  R:   { wave:'#ff8833', glow:'rgba(255,136,51,0.4)',  mid:'rgba(255,136,51,0.15)',  fft:'#ff8833', fftGlow:'rgba(255,136,51,0.3)' }
+};
+const dataArrays = { main:new Uint8Array(2048), L:new Uint8Array(2048), R:new Uint8Array(2048) };
+const fftArrays  = { main:new Uint8Array(1024), L:new Uint8Array(1024), R:new Uint8Array(1024) };
+const fftMaxHz   = { main:2000, L:2000, R:2000 };
+const FFT_MIN_HZ=20, FFT_HEADROOM=100, FFT_MIN_ENERGY=8;
+function detectMaxHz(data, sampleRate) {
+  let maxBin=0;
+  for(let i=data.length-1;i>=0;i--) if(data[i]>FFT_MIN_ENERGY){ maxBin=i; break; }
+  return Math.max(FFT_MIN_HZ, maxBin*(sampleRate/2)/data.length+FFT_HEADROOM);
+}
+const LABEL_FONT  = '0.42rem "Share Tech Mono", monospace';
+const LABEL_COLOR = 'rgba(255,255,255,0.35)';
+function fmtHz(hz){ return hz>=1000?(hz/1000).toFixed(hz>=10000?1:2)+'k':Math.round(hz)+''; }
+function fmtMs(ms){ return ms.toFixed(1)+'ms'; }
+function cubicInterp(p0,p1,p2,p3,t){ const t2=t*t,t3=t2*t; return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3); }
+function sampleAt(data,idx){ const i=Math.floor(idx),t=idx-i,len=data.length; const p0=(data[Math.max(0,i-1)]/128)-1,p1=(data[Math.min(len-1,i)]/128)-1; const p2=(data[Math.min(len-1,i+1)]/128)-1,p3=(data[Math.min(len-1,i+2)]/128)-1; return cubicInterp(p0,p1,p2,p3,t); }
+function drawWave(canvas,c,data,hz,col){
+  const dpr=window.devicePixelRatio||1,W=canvas.width/dpr,H=canvas.height/dpr;
+  c.clearRect(0,0,W,H);
+  let start=0,armed=false;
+  for(let i=2;i<data.length-1;i++){ if(!armed&&data[i]<123) armed=true; if(armed&&data[i-1]<133&&data[i]>=133){start=i;break;} }
+  const sampleRate=actx.sampleRate,spc=sampleRate/Math.max(1,hz),pps=W/(spc*2.5);
+  const cts=pps<1?6.5:pps<2?5:pps<4?3.5:2.5;
+  const show=Math.max(Math.min(Math.ceil(spc*cts),data.length-start-2),32);
+  const windowMs=(show/sampleRate)*1000;
+  function trace(){ c.beginPath(); for(let px=0;px<=W;px++){ const v=sampleAt(data,start+(px/W)*show); px===0?c.moveTo(px,H/2+v*(H/2)*0.82):c.lineTo(px,H/2+v*(H/2)*0.82); } c.stroke(); }
+  c.save();c.shadowColor=col.glow;c.shadowBlur=10;c.strokeStyle=col.mid;c.lineWidth=4;trace();c.restore();
+  c.strokeStyle=col.wave;c.lineWidth=1.8;trace();
+  c.font=LABEL_FONT;c.fillStyle=LABEL_COLOR;c.textBaseline='bottom';
+  c.textAlign='left';c.fillText('0ms',3,H-2);
+  c.textAlign='center';c.fillText(fmtMs(windowMs/2),W/2,H-2);
+  c.textAlign='right';c.fillText(fmtMs(windowMs),W-3,H-2);
+}
+function drawFFT(canvas,c,data,col,key){
+  const dpr=window.devicePixelRatio||1,W=canvas.width/dpr,H=canvas.height/dpr;
+  c.clearRect(0,0,W,H);
+  const sampleRate=actx.sampleRate,nyquist=sampleRate/2,hzPerBin=nyquist/data.length;
+  const maxHz=detectMaxHz(data,sampleRate); fftMaxHz[key]=maxHz;
+  const maxBin=Math.min(data.length-1,Math.ceil(maxHz/hzPerBin));
+  const barW=W/(maxBin+1);
+  c.save();c.shadowColor=col.fftGlow;c.shadowBlur=3;
+  for(let i=0;i<=maxBin;i++){
+    const amp=data[i]/255,barH=amp*(H-14);
+    const grad=c.createLinearGradient(0,H-14-barH,0,H-14);
+    grad.addColorStop(0,col.fft);grad.addColorStop(1,'rgba(0,0,0,0.05)');
+    c.fillStyle=grad;c.fillRect(i*barW,H-14-barH,Math.max(1,barW-0.5),barH);
+  }
+  c.restore();
+  c.strokeStyle='rgba(255,255,255,0.08)';c.lineWidth=1;c.beginPath();c.moveTo(0,H-14);c.lineTo(W,H-14);c.stroke();
+  c.font=LABEL_FONT;c.fillStyle=LABEL_COLOR;c.textBaseline='top';
+  c.textAlign='left';c.fillText('0Hz',2,H-13);
+  [0.25,0.5,0.75,1.0].forEach((frac,idx)=>{
+    const hz=maxHz*frac,x=(hz/maxHz)*W;
+    if(idx<3){c.strokeStyle='rgba(255,255,255,0.12)';c.lineWidth=1;c.beginPath();c.moveTo(x,H-14);c.lineTo(x,H-10);c.stroke();c.textAlign='center';c.fillStyle=LABEL_COLOR;c.fillText(fmtHz(hz)+'Hz',x,H-13);}
+    else{c.textAlign='right';c.fillText(fmtHz(hz)+'Hz',W-2,H-13);}
+  });
+}
+function drawSilenceWave(canvas,c,col){ const dpr=window.devicePixelRatio||1,W=canvas.width/dpr,H=canvas.height/dpr; c.clearRect(0,0,W,H); c.strokeStyle=col.mid;c.lineWidth=1.5;c.beginPath();c.moveTo(0,H/2);c.lineTo(W,H/2);c.stroke(); c.font=LABEL_FONT;c.fillStyle=LABEL_COLOR;c.textBaseline='bottom';c.textAlign='left';c.fillText('0ms',3,H-2); }
+function drawSilenceFFT(canvas,c,key){ const dpr=window.devicePixelRatio||1,W=canvas.width/dpr,H=canvas.height/dpr; c.clearRect(0,0,W,H); c.strokeStyle='rgba(255,255,255,0.04)';c.lineWidth=1;c.beginPath();c.moveTo(0,H-14);c.lineTo(W,H-14);c.stroke(); c.font=LABEL_FONT;c.fillStyle=LABEL_COLOR;c.textBaseline='top';c.textAlign='left';c.fillText('0Hz',2,H-13);c.textAlign='right';c.fillText(fmtHz(fftMaxHz[key||'main'])+'Hz',W-2,H-13); }
+function drawLoop(){
+  const micActive = (inputMode['L']!=='INT'||inputMode['R']!=='INT') && micGranted;
+  if(!playingL&&!playingR&&!micActive) return;
+  requestAnimationFrame(drawLoop);
+  analyser.getByteTimeDomainData(dataArrays.main); analyser.getByteFrequencyData(fftArrays.main);
+  if(analyserL){analyserL.getByteTimeDomainData(dataArrays.L);analyserL.getByteFrequencyData(fftArrays.L);}
+  if(analyserR){analyserR.getByteTimeDomainData(dataArrays.R);analyserR.getByteFrequencyData(fftArrays.R);}
+  const refHz=pToF((playingL?document.getElementById('mSliderL'):document.getElementById('mSliderR')).value);
+  const hzL=playingL?pToF(document.getElementById('mSliderL').value):refHz;
+  const hzR=playingR?pToF(document.getElementById('mSliderR').value):refHz;
+  drawWave(cvs.main,ctx2d.main,dataArrays.main,refHz,COLORS.main);
+  drawWave(cvs.L,ctx2d.L,dataArrays.L,hzL,COLORS.L);
+  drawWave(cvs.R,ctx2d.R,dataArrays.R,hzR,COLORS.R);
+  drawFFT(fftCvs.main,fftCtx.main,fftArrays.main,COLORS.main,'main');
+  drawFFT(fftCvs.L,fftCtx.L,fftArrays.L,COLORS.L,'L');
+  drawFFT(fftCvs.R,fftCtx.R,fftArrays.R,COLORS.R,'R');
+  updateModulatedSliders();
+  drawLissajous();
+}
+function drawAllSilence(){
+  Object.keys(cvs).forEach(k=>drawSilenceWave(cvs[k],ctx2d[k],COLORS[k]));
+  Object.keys(fftCvs).forEach(k=>drawSilenceFFT(fftCvs[k],fftCtx[k],k));
+  drawLissajousSilence();
+}
+
+// ======================== MODULATED SLIDER ANIMATION ========================
+function updateModulatedSliders() {
+  allUnits.forEach(u => {
+    if (!u.osc) return;
+    const ms = u.modSources;
+    // Freq slider — animate when freq is being modulated
+    if (ms.freq.period !== 'none' && ms.freq.magnitude !== 'none') {
+      const liveF = Math.max(1, Math.min(16000, u.osc.frequency.value));
+      u.dom.hz.innerText = liveF.toFixed(1) + ' Hz';
+      u.dom.slider.value = fToP(liveF);
+      updateSliderFill(u.dom.slider);
+    }
+    // Amp slider — animate when amp is being modulated
+    if (ms.amp.period !== 'none' && ms.amp.magnitude !== 'none' && u.ampGain) {
+      const liveAmp = Math.max(0, Math.min(2, u.ampGain.gain.value));
+      u.dom.ampSlider.value = liveAmp;
+      u.dom.ampValDisplay.textContent = Math.round(liveAmp * 100) + '%';
+      updateSliderFill(u.dom.ampSlider);
+    }
+    // Phase dial — animate when phase is being modulated
+    if (ms.phase.period !== 'none' && ms.phase.magnitude !== 'none') {
+      const detuneCents = u.osc.detune.value;
+      const visualPhase = ((u.phase + (detuneCents / 100) * 10) % 360 + 360) % 360;
+      const pct = (visualPhase / 360) * 100;
+      u.dom.track.style.setProperty('--p', pct + '%');
+      u.dom.thumb.style.setProperty('--p-deg', visualPhase + 'deg');
+      u.dom.theta.innerText = Math.round(visualPhase) + '°';
+    }
+    // Gate — read rectified signal from analyser tap
+    if (ms.toggle.period !== 'none' && ms.toggle.magnitude !== 'none' && u.modNodes.toggle?.gateAnalyser) {
+      const buf = new Float32Array(u.modNodes.toggle.gateAnalyser.fftSize);
+      u.modNodes.toggle.gateAnalyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      const tail = 16;
+      for (let i = buf.length - tail; i < buf.length; i++) sum += buf[i];
+      const gateVal = Math.max(0, Math.min(1, sum / tail));
+      const displayAmp = u.amp * gateVal;
+      u.dom.ampSlider.value = displayAmp;
+      u.dom.ampValDisplay.textContent = Math.round(gateVal * 100) + '%';
+      updateSliderFill(u.dom.ampSlider);
+      if (u.on) {
+        u.dom.container.classList.toggle('on', gateVal > 0.05);
+      }
+    }
+  });
+}
+document.getElementById('lissAutoscaleBtn').addEventListener('click', () => {
+  lissAutoScale = !lissAutoScale;
+  document.getElementById('lissAutoscaleBtn').classList.toggle('active', lissAutoScale);
+});
+
+const lissCanvas = document.getElementById('lissCanvas');
+const lissCtx    = lissCanvas.getContext('2d');
+function resizeLiss(){
+  const dpr=window.devicePixelRatio||1; const wrap=lissCanvas.parentElement; const size=wrap.clientWidth;
+  lissCanvas.width=size*dpr; lissCanvas.height=size*dpr; lissCanvas.style.width=size+'px'; lissCanvas.style.height=size+'px';
+  lissCtx.setTransform(dpr,0,0,dpr,0,0); lissCtx.fillStyle='#020508'; lissCtx.fillRect(0,0,size,size); drawLissajousGrid();
+}
+function drawLissajousGrid(){
+  const dpr=window.devicePixelRatio||1,W=lissCanvas.width/dpr,H=lissCanvas.height/dpr;
+  lissCtx.save(); lissCtx.strokeStyle='rgba(255,255,255,0.06)'; lissCtx.lineWidth=1;
+  lissCtx.beginPath(); lissCtx.moveTo(W/2,0);lissCtx.lineTo(W/2,H); lissCtx.moveTo(0,H/2);lissCtx.lineTo(W,H/2); lissCtx.stroke();
+  lissCtx.strokeStyle='rgba(255,255,255,0.03)'; lissCtx.beginPath(); lissCtx.arc(W/2,H/2,W*0.46,0,Math.PI*2); lissCtx.stroke(); lissCtx.restore();
+}
+function drawLissajous(){
+  if(!analyserL||!analyserR) return;
+  const dpr=window.devicePixelRatio||1,W=lissCanvas.width/dpr,H=lissCanvas.height/dpr;
+  lissCtx.fillStyle='rgba(2,5,8,0.25)'; lissCtx.fillRect(0,0,W,H); drawLissajousGrid();
+  const bufLen=analyserL.fftSize,dataL=new Uint8Array(bufLen),dataR=new Uint8Array(bufLen);
+  analyserL.getByteTimeDomainData(dataL); analyserR.getByteTimeDomainData(dataR);
+  const cx=W/2,cy=H/2;
+  let scale=W*0.46;
+  if(lissAutoScale){
+    // Find peak deviation from center (128) across both channels
+    let peak=1;
+    for(let i=0;i<bufLen;i++){
+      const dL=Math.abs(dataL[i]-128), dR=Math.abs(dataR[i]-128);
+      if(dL>peak) peak=dL; if(dR>peak) peak=dR;
+    }
+    // Map peak (1-128) to scale so signal fills ~85% of canvas
+    scale=(W*0.46)*(128/peak)*0.85;
+    scale=Math.min(scale,W*2.5); // cap to avoid infinite zoom on silence
+  }
+  lissCtx.save(); lissCtx.shadowBlur=6; lissCtx.shadowColor='rgba(0,212,255,0.6)'; lissCtx.strokeStyle='rgba(0,212,255,0.85)'; lissCtx.lineWidth=1.2; lissCtx.beginPath();
+  const step=Math.max(1,Math.floor(bufLen/512));
+  for(let i=0;i<bufLen;i+=step){ const x=cx+((dataR[i]/128)-1)*scale,y=cy-((dataL[i]/128)-1)*scale; i===0?lissCtx.moveTo(x,y):lissCtx.lineTo(x,y); }
+  lissCtx.stroke(); lissCtx.restore();
+}
+function drawLissajousSilence(){
+  const dpr=window.devicePixelRatio||1,W=lissCanvas.width/dpr,H=lissCanvas.height/dpr;
+  lissCtx.fillStyle='#020508'; lissCtx.fillRect(0,0,W,H); drawLissajousGrid();
+  lissCtx.fillStyle='rgba(0,212,255,0.15)'; lissCtx.beginPath(); lissCtx.arc(W/2,H/2,2,0,Math.PI*2); lissCtx.fill();
+}
+
+// ======================== RESIZE ========================
+function resize(){
+  const dpr=window.devicePixelRatio||1;
+  [['viz',90],['fft',80]].forEach(([id,h])=>{const c=document.getElementById(id),w=c.parentElement.clientWidth;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);});
+  [['vizL',65],['vizR',65],['fftL',60],['fftR',60]].forEach(([id,h])=>{const c=document.getElementById(id),w=c.parentElement.clientWidth;c.width=w*dpr;c.height=h*dpr;c.style.width=w+'px';c.style.height=h+'px';c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);});
+  resizeLiss();
+  if(!playingL&&!playingR) drawAllSilence();
+}
+window.onresize=resize; resize(); drawAllSilence();
+</script>
+</body>
+</html>
